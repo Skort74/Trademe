@@ -1,12 +1,19 @@
 
 from flask import Flask, jsonify
 from flask_cors import CORS
-
+from routes.kategori import kategori_bp
 from database import get_db_connection
+from routes.auth import auth_bp
+from routes.profile import profile_bp
 
 app = Flask(__name__)
 CORS(app)
 
+app.register_blueprint(kategori_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(profile_bp)
+
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # Maksimal 5 MB
 
 @app.get("/")
 def home():
@@ -51,3 +58,5 @@ def health_check():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
+
+
