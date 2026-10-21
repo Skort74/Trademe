@@ -5,6 +5,8 @@ from routes.kategori import kategori_bp
 from database import get_db_connection
 from routes.auth import auth_bp
 from routes.profile import profile_bp
+from routes.barang import barang_bp
+
 
 app = Flask(__name__)
 CORS(app)
@@ -12,6 +14,7 @@ CORS(app)
 app.register_blueprint(kategori_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(profile_bp)
+app.register_blueprint(barang_bp)
 
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # Maksimal 5 MB
 

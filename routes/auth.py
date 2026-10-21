@@ -122,7 +122,6 @@ def register():
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
 
-        # Email tidak boleh bertabrakan dengan akun admin.
         cursor.execute(
             "SELECT user_id FROM `user` WHERE email = %s",
             (email,),
