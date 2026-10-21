@@ -24,11 +24,13 @@ Backend aplikasi TradeMe menggunakan Flask dan MySQL.
    ```
 5. Buat file `.env` berdasarkan konfigurasi database lokal:
    ```env
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=password_mysql_kamu
-   DB_NAME=trademe
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=Wonosari72.
+DB_NAME=trademe
+JWT_SECRET_KEY=2712cc408ed2f915e6b01a1733447fc8aee7757c651942a9df7daa67af6f5373
+JWT_ACCESS_TOKEN_MINUTES=15
    ```
 6. Impor struktur database `trademe` melalui MySQL Workbench.
 
