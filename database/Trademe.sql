@@ -392,7 +392,11 @@ CREATE TABLE `user` (
 
 LOCK TABLES `user` WRITE;
 /*!40000 ALTER TABLE `user` DISABLE KEYS */;
-INSERT INTO `user` VALUES (1,'Budi Santoso','budi@gmail.com','123456','081234567890','Surabaya','pengguna',NULL,'2026-10-06 19:04:49'),(2,'Andi Pratama','andi@gmail.com','123456','081234567891','Surabaya','pengguna',NULL,'2026-10-06 19:04:49'),(3,'Siti Rahma','siti@gmail.com','123456','081234567892','Sidoarjo','pengguna',NULL,'2026-10-06 19:04:49');
+INSERT INTO `user` VALUES 
+(1,'Budi Santoso','budi@gmail.com','123456','081234567890','Surabaya','pengguna',NULL,'2026-10-06 19:04:49'),
+(2,'Andi Pratama','andi@gmail.com','123456','081234567891','Surabaya','pengguna',NULL,'2026-10-06 19:04:49'),
+(3,'Siti Rahma','siti@gmail.com','123456','081234567892','Sidoarjo','pengguna',NULL,'2026-10-06 19:04:49'),
+(4,'Yayasan Kasih Anak','yayasan@kasihanak.org','password123','081234567788','Sukolilo, Surabaya','pengguna',NULL,'2026-10-20 10:00:00');
 /*!40000 ALTER TABLE `user` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
