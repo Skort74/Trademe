@@ -1,13 +1,150 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ==========================================================================
+   TradeMe - Modern Design System & CSS Variables
+   Color Palette: Dominant Emerald & Forest Green
+   ========================================================================== */
+
+   @tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dominant Green Palette */
+  --tm-green-50: #ecfdf5;
+  --tm-green-100: #d1fae5;
+  --tm-green-200: #a7f3d0;
+  --tm-green-300: #6ee7b7;
+  --tm-green-400: #34d399;
+  --tm-green-500: #10b981;
+  --tm-green-600: #059669;
+  --tm-green-700: #047857;
+  --tm-green-800: #065f46;
+  --tm-green-900: #064e3b;
+  --tm-green-950: #022c22;
+
+  /* Primary Brand Green Accents */
+  --tm-primary: #059669;
+  --tm-primary-hover: #047857;
+  --tm-primary-active: #065f46;
+  --tm-primary-light: #ecfdf5;
+  --tm-primary-glow: rgba(5, 150, 105, 0.25);
+  --tm-primary-glow-strong: rgba(16, 185, 129, 0.4);
+
+  /* Secondary & Neutral Tones */
+  --tm-bg-page: #f8fafc;
+  --tm-bg-surface: #ffffff;
+  --tm-bg-glass: rgba(255, 255, 255, 0.92);
+  --tm-bg-glass-dark: rgba(2, 44, 34, 0.85);
+
+  --tm-text-main: #0f172a;
+  --tm-text-secondary: #334155;
+  --tm-text-muted: #64748b;
+  --tm-text-light: #94a3b8;
+  --tm-text-inverse: #ffffff;
+
+  --tm-border-subtle: #e2e8f0;
+  --tm-border-focus: #10b981;
+  --tm-border-accent: rgba(16, 185, 129, 0.35);
+
+  /* Status Colors */
+  --tm-success: #10b981;
+  --tm-success-bg: #ecfdf5;
+  --tm-warning: #f59e0b;
+  --tm-warning-bg: #fffbeb;
+  --tm-danger: #ef4444;
+  --tm-danger-bg: #fef2f2;
+  --tm-info: #0284c7;
+
+  /* Shadows */
+  --tm-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --tm-shadow-md: 0 4px 6px -1px rgba(6, 78, 59, 0.07), 0 2px 4px -2px rgba(6, 78, 59, 0.05);
+  --tm-shadow-lg: 0 10px 25px -3px rgba(6, 78, 59, 0.1), 0 4px 6px -4px rgba(6, 78, 59, 0.06);
+  --tm-shadow-xl: 0 20px 40px -8px rgba(6, 78, 59, 0.16), 0 8px 16px -6px rgba(6, 78, 59, 0.08);
+  --tm-shadow-card: 0 25px 50px -12px rgba(2, 44, 34, 0.18);
+
+  /* Radii */
+  --tm-radius-sm: 8px;
+  --tm-radius-md: 12px;
+  --tm-radius-lg: 16px;
+  --tm-radius-xl: 24px;
+  --tm-radius-full: 9999px;
+
+  /* Transitions */
+  --tm-transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  --tm-transition-bounce: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Base Styles */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100%;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: var(--tm-text-main);
+  background-color: var(--tm-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
+}
+
+/* Background Ambient Lighting Effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: -150px;
+  right: -100px;
+  width: 550px;
+  height: 550px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.18) 0%, rgba(16, 185, 129, 0.05) 50%, transparent 70%);
+  filter: blur(60px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  bottom: -150px;
+  left: -100px;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(5, 150, 105, 0.14) 0%, rgba(6, 78, 59, 0.04) 50%, transparent 70%);
+  filter: blur(70px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+}
+
+a {
+  color: var(--tm-primary);
+  text-decoration: none;
+  transition: var(--tm-transition);
+}
+
+a:hover {
+  color: var(--tm-primary-hover);
+  text-decoration: underline;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
