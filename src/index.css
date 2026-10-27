@@ -3,9 +3,9 @@
    Color Palette: Dominant Emerald & Forest Green
    ========================================================================== */
 
-   @tailwind base;
-@tailwind components;
-@tailwind utilities;
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
 
 :root {
   /* Dominant Green Palette */

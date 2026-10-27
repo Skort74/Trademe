@@ -27,10 +27,11 @@
 
 
 import React from "react";
-import TradeMeHome from "./TradeMeHome";
+// import TradeMeHome from "./TradeMeHome";
+import PanelAdminBarang from "./PanelAdminBarang";
 
 function App() {
-  return <TradeMeHome />;
+  return <PanelAdminBarang />;
 }
 
 export default App;
