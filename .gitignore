@@ -1,0 +1,25 @@
+# .gitignore for TradeMe backend
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# macOS files
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Uploaded files (if any)
+uploads/
+
