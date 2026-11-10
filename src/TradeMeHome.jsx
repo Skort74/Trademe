@@ -100,7 +100,12 @@ const ALL_PRODUCTS = [
   },
 ];
 
-export default function TradeMeHome() {
+export default function TradeMeHome({
+  onNavigate,
+  currentUser,
+  onLogout,
+  onSelectProduct,
+}) {
   const [activeTab, setActiveTab] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Kategori");
@@ -110,6 +115,7 @@ export default function TradeMeHome() {
   const [currentCity, setCurrentCity] = useState("Surabaya");
   const [favorites, setFavorites] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleFavorite = (id) => {
     setFavorites((prev) => ({
@@ -179,7 +185,13 @@ export default function TradeMeHome() {
   };
 
   return (
-    <div className="tm-app" onClick={() => setActiveDropdown(null)}>
+    <div
+      className="tm-app"
+      onClick={() => {
+        setActiveDropdown(null);
+        setShowProfileMenu(false);
+      }}
+    >
       {/* ================= NAVBAR ================= */}
       <header className="tm-header">
         <div className="tm-nav-container">
@@ -209,7 +221,10 @@ export default function TradeMeHome() {
             </button>
 
             {/* Chat with notification */}
-            <div className="tm-nav-link">
+            <div
+              className="tm-nav-link cursor-pointer"
+              onClick={() => onNavigate && onNavigate("chat")}
+            >
               <svg
                 width="19"
                 height="19"
@@ -227,21 +242,62 @@ export default function TradeMeHome() {
             </div>
 
             {/* Profil */}
-            <div className="tm-nav-link">
-              <svg
-                width="19"
-                height="19"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="relative">
+              <div
+                className="tm-nav-link cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowProfileMenu(!showProfileMenu);
+                }}
               >
-                <circle cx="12" cy="8" r="4" />
-                <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
-              </svg>
-              <span className="tm-nav-text">Profil</span>
+                <svg
+                  width="19"
+                  height="19"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
+                </svg>
+                <span className="tm-nav-text">
+                  {currentUser ? currentUser.fullName?.split(" ")[0] || "Profil" : "Profil"}
+                </span>
+              </div>
+
+              {/* Profile Dropdown Menu */}
+              {showProfileMenu && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-50 text-left animate-fadeIn"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="px-3 py-2 border-b border-gray-100 mb-2">
+                    <p className="text-xs text-gray-500 font-medium">Masuk sebagai</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {currentUser?.fullName || "Pengguna TradeMe"}
+                    </p>
+                    <p className="text-xs text-emerald-700 font-semibold truncate">
+                      {currentUser?.email || "user@treadme.com"}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      if (onLogout) onLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Keluar (Logout)</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Hamburger Menu */}
@@ -677,7 +733,17 @@ export default function TradeMeHome() {
             {filteredItems.map((item) => {
               const isFav = favorites[item.id];
               return (
-                <div key={item.id} className="tm-card">
+                <div
+                  key={item.id}
+                  className="tm-card cursor-pointer"
+                  onClick={() => {
+                    if (onSelectProduct) {
+                      onSelectProduct(item);
+                    } else if (onNavigate) {
+                      onNavigate("detail", { product: item });
+                    }
+                  }}
+                >
                   {/* Card Media */}
                   <div className="tm-card-media">
                     <img

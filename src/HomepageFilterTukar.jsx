@@ -240,7 +240,7 @@ export default function HomepageFilterTukar() {
                   </button>
                   <button className="cursor-pointer text-nowrap flex py-[9px] px-[18px] flex-col justify-center items-center rounded-[9px] w-fit h-full">
                     <p className="text-[#6A756F] font-plusJakartaSans text-xs font-bold leading-[18px] w-fit">
-                      Jual
+                      Beli
                     </p>
                   </button>
                   <button className="cursor-pointer text-nowrap flex py-[9px] px-[18px] flex-col justify-center items-center rounded-[9px] bg-[#2F7D5B] shadow-[04px10px0rgba(47,125,91,0.16)] w-fit h-full">
