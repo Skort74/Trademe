@@ -62,7 +62,7 @@ export default function HalamanSuksesPembayaran({ product, onBack, onNavigate, o
 
           {/* Subtitle */}
           <p className="text-[#66736C] text-sm sm:text-[15px] leading-relaxed max-w-lg mx-auto mb-10">
-            Dana <span className="font-bold text-[#1F2A24]">{item.priceText || "Rp750.000"}</span> telah diamankan dalam escrow. Selesaikan serah terima barang untuk melanjutkan transaksi.
+            Dana <span className="font-bold text-[#1F2A24]">{item.priceText || "Rp750.000"}</span> telah diamankan. Selesaikan serah terima barang untuk melanjutkan transaksi.
           </p>
 
           {/* Stepper Progress Bar */}

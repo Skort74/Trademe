@@ -184,6 +184,20 @@ export default function TradeMeHome({
     }
   };
 
+  // Handler khusus untuk klik kartu barang
+  const handleCardClick = (item) => {
+    if (onSelectProduct) {
+      onSelectProduct(item);
+    } else if (onNavigate) {
+      // LOGIKA UTAMA: Cek apakah ini Lelang atau bukan
+      if (item.category === "Lelang") {
+        onNavigate("lelang_detail", { product: item });
+      } else {
+        onNavigate("detail", { product: item });
+      }
+    }
+  };
+
   return (
     <div
       className="tm-app"
@@ -204,7 +218,10 @@ export default function TradeMeHome({
           {/* Right Actions */}
           <div className="tm-nav-right">
             {/* CTA Button */}
-            <button className="tm-btn-upload">
+            <button 
+              className="tm-btn-upload"
+              onClick={() => onNavigate && onNavigate('upload')}
+            >
               <svg
                 width="15"
                 height="15"
@@ -280,7 +297,7 @@ export default function TradeMeHome({
                       {currentUser?.fullName || "Pengguna TradeMe"}
                     </p>
                     <p className="text-xs text-emerald-700 font-semibold truncate">
-                      {currentUser?.email || "user@treadme.com"}
+                      {currentUser?.email || "user@trademe.com"}
                     </p>
                   </div>
 
@@ -367,9 +384,9 @@ export default function TradeMeHome({
                 </svg>
               </button>
 
-              <button
-                className="tm-btn-donate"
-                onClick={() => setActiveTab("Donasi")}
+              <button 
+                onClick={() => onNavigate && onNavigate('donasi')} 
+                className="tm-btn-secondary"
               >
                 Mulai Berdonasi
               </button>
@@ -736,13 +753,7 @@ export default function TradeMeHome({
                 <div
                   key={item.id}
                   className="tm-card cursor-pointer"
-                  onClick={() => {
-                    if (onSelectProduct) {
-                      onSelectProduct(item);
-                    } else if (onNavigate) {
-                      onNavigate("detail", { product: item });
-                    }
-                  }}
+                  onClick={() => handleCardClick(item)}
                 >
                   {/* Card Media */}
                   <div className="tm-card-media">
