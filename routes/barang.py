@@ -1,9 +1,35 @@
-from flask import Blueprint, jsonify, request, g
+from flask import Blueprint, jsonify, request, g, current_app, send_from_directory
 from database import get_db_connection
 from routes.auth_utils import token_required, admin_required
+import os
+from uuid import uuid4            # use uuid4 directly (B1 helper)
+from werkzeug.utils import secure_filename
+from PIL import Image
 
 barang_bp = Blueprint("barang", __name__)
 
+# ------------------------------------------------------------------------
+# Helper utilities – ownership extraction & safe barang lookup.
+# All routes that need to verify the owner must use these helpers.
+# ------------------------------------------------------------------------
+
+def _get_user_id_from_g(current_user):
+    """Defensive extraction of JWT ``sub`` claim."""
+    sub = current_user.get("sub")
+    try:
+        return int(sub) if sub is not None else None
+    except (TypeError, ValueError):
+        return None
+
+def _get_barang_for_owner(barang_id: int, user_id: int, cursor):
+    """Fetch a barang row and verify ownership."""
+    cursor.execute("SELECT * FROM barang WHERE barang_id = %s", (barang_id,))
+    barang = cursor.fetchone()
+    if not barang:
+        return None, (jsonify({"status":"error","message":"Barang tidak ditemukan"}), 404)
+    if barang["pemilik_id"] != user_id:
+        return None, (jsonify({"status":"error","message":"Bukan pemilik barang"}), 403)
+    return barang, None
 
 @barang_bp.get("/api/barang")
 def get_barang():
@@ -32,15 +58,100 @@ def get_barang():
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
 
-        # Mengambil total barang
-        cursor.execute("""
+        # --------------------------------------------------------------------
+        #  Build dynamic filters (B1‑C2)
+        # --------------------------------------------------------------------
+        filters = []
+        params = []
+
+        # General search (nama_barang + deskripsi) – C1
+        q = request.args.get("q")
+        if q:
+            filters.append("(b.nama_barang LIKE %s OR b.deskripsi LIKE %s)")
+            like_q = f"%{q}%"
+            params.extend([like_q, like_q])
+
+        # Column‑specific filters
+        mapping = {
+            "kategori_id": "b.kategori_id",
+            "kondisi": "b.kondisi",
+            "tipe_transaksi": "b.tipe_transaksi",
+            "status_barang": "b.status_barang",
+            "status_verifikasi": "b.status_verifikasi",
+            "pemilik_id": "b.pemilik_id",
+            "lokasi": "b.lokasi"
+        }
+        for arg, col in mapping.items():
+            val = request.args.get(arg)
+            if val:
+                if arg in ("kategori_id", "pemilik_id"):
+                    try:
+                        val_int = int(val)
+                        filters.append(f"{col} = %s")
+                        params.append(val_int)
+                    except ValueError:
+                        return jsonify({
+                            "status": "error",
+                            "message": f"{arg} harus berupa angka"
+                        }), 400
+                else:
+                    filters.append(f"{col} = %s")
+                    params.append(val)
+
+        # Harga range – C2
+        harga_min = request.args.get("harga_min")
+        harga_max = request.args.get("harga_max")
+        if harga_min:
+            try:
+                min_val = float(harga_min)
+                filters.append("b.harga >= %s")
+                params.append(min_val)
+            except ValueError:
+                return jsonify({
+                    "status": "error",
+                    "message": "harga_min harus berupa angka"
+                }), 400
+        if harga_max:
+            try:
+                max_val = float(harga_max)
+                filters.append("b.harga <= %s")
+                params.append(max_val)
+            except ValueError:
+                return jsonify({
+                    "status": "error",
+                    "message": "harga_max harus berupa angka"
+                }), 400
+
+        where_clause = ""
+        if filters:
+            where_clause = "WHERE " + " AND ".join(filters)
+
+        # --------------------------------------------------------------------
+        #  Sorting (whitelist) – C3
+        # --------------------------------------------------------------------
+        sort_opt = request.args.get("sort")
+        sort_map = {
+            "harga_asc": "b.harga ASC",
+            "harga_desc": "b.harga DESC",
+            "created_at_asc": "b.barang_id ASC",
+            "created_at_desc": "b.barang_id DESC"
+        }
+        order_by = sort_map.get(sort_opt, "b.barang_id DESC")
+
+        # --------------------------------------------------------------------
+        #  Total count with same WHERE clause (fix for COUNT)
+        # --------------------------------------------------------------------
+        cursor.execute(f"""
             SELECT COUNT(*) AS total
-            FROM barang
-        """)
+            FROM barang b
+            {where_clause}
+        """, tuple(params))
         total = cursor.fetchone()["total"]
 
-        # Mengambil daftar barang beserta kategori dan pemilik
-        cursor.execute("""
+        # --------------------------------------------------------------------
+        #  Data query with pagination, sorting and same WHERE clause
+        # --------------------------------------------------------------------
+        cursor.execute(f"""
             SELECT
                 b.barang_id,
                 b.pemilik_id,
@@ -57,13 +168,12 @@ def get_barang():
                 b.status_barang,
                 b.status_verifikasi
             FROM barang b
-            JOIN kategori k
-                ON b.kategori_id = k.kategori_id
-            JOIN user u
-                ON b.pemilik_id = u.user_id
-            ORDER BY b.barang_id DESC
+            JOIN kategori k ON b.kategori_id = k.kategori_id
+            JOIN user u ON b.pemilik_id = u.user_id
+            {where_clause}
+            ORDER BY {order_by}
             LIMIT %s OFFSET %s
-        """, (limit, offset))
+        """, tuple(params + [limit, offset]))
 
         data = cursor.fetchall()
         total_pages = (total + limit - 1) // limit
@@ -483,13 +593,10 @@ def edit_barang(barang_id):
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
 
-        # 1. Pastikan barang ada dan milik user
-        cursor.execute("SELECT pemilik_id, status_barang FROM barang WHERE barang_id = %s", (barang_id,))
-        barang = cursor.fetchone()
-        if not barang:
-            return jsonify({"status": "error", "message": "Barang tidak ditemukan"}), 404
-        if barang["pemilik_id"] != user_id:
-            return jsonify({"status": "error", "message": "Akses ditolak: barang bukan milik Anda"}), 403
+        # 1. Pastikan barang ada dan milik user – gunakan helper
+        barang, err = _get_barang_for_owner(barang_id, user_id, cursor)
+        if err:
+            return err
 
         # 2. Cegah edit bila status tidak dapat diubah
         if barang["status_barang"] in ("terjual", "didonasikan", "dilelang"):
@@ -542,6 +649,183 @@ def edit_barang(barang_id):
         if cursor is not None:
             cursor.close()
         if connection is not None and connection.is_connected():
+            connection.close()
+
+# ---------------------------------------------------------------------------
+# DELETE endpoint – hard delete with FK‑conflict handling and photo cleanup
+# ------------------------------------------------------------------------
+@barang_bp.delete("/api/barang/<int:barang_id>")
+@token_required
+def delete_barang(barang_id):
+    """
+    Hard‑delete a barang owned by the requesting user.
+    - Returns 409 if the barang is referenced in donasi, lelang,
+      negosiasi, or transaksi tables.
+    - After successful DB delete, any stored foto_barang file is removed
+      using a safe path‑traversal guard (B5).
+    """
+    current_user = g.current_user
+    user_id = _get_user_id_from_g(current_user)
+    if user_id is None:
+        return jsonify({"status": "error", "message": "Token tidak valid"}), 401
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # Verify ownership using the helper (B7)
+        barang, err = _get_barang_for_owner(barang_id, user_id, cursor)
+        if err:
+            return err
+
+        # ---- FK conflict check (A2) ---------------------------------
+        fk_tables = ["donasi", "lelang", "negosiasi", "transaksi"]
+        for tbl in fk_tables:
+            cursor.execute(
+                f"SELECT 1 FROM {tbl} WHERE barang_id = %s LIMIT 1", (barang_id,)
+            )
+            if cursor.fetchone():
+                return jsonify({
+                    "status": "error",
+                    "message": "Barang tidak dapat dihapus karena memiliki data terkait"
+                }), 409
+
+        # ---- Perform hard delete (A1) --------------------------------
+        cursor.execute("DELETE FROM barang WHERE barang_id = %s", (barang_id,))
+        connection.commit()
+
+        # ---- Photo cleanup (B5) --------------------------------------
+        foto_path = barang.get("foto_barang")
+        if foto_path:
+            upload_root = os.path.abspath(
+                os.path.join(current_app.root_path, "uploads", "barang")
+            )
+            # Strip any leading path components and guard against traversal
+            filename_only = os.path.basename(foto_path)
+            target_path = os.path.abspath(os.path.join(upload_root, filename_only))
+            upload_root_real = os.path.realpath(upload_root)
+            if os.path.realpath(target_path).startswith(upload_root_real + os.sep) and os.path.isfile(target_path):
+                os.remove(target_path)
+
+        return jsonify({
+            "status": "success",
+            "message": "Barang berhasil dihapus"
+        }), 200
+
+    except Exception:
+        if connection:
+            connection.rollback()
+        import logging
+        logging.exception("Gagal menghapus barang")
+        return jsonify({
+            "status": "error",
+            "message": "Gagal menghapus barang"
+        }), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+# ---------------------------------------------------------------------------
+# POST endpoint – upload atau ganti foto barang
+# ---------------------------------------------------------------------------
+@barang_bp.post("/api/barang/<int:barang_id>/photo")
+@token_required
+def upload_barang_photo(barang_id):
+    """
+    Upload a new photo for a barang owned by the requesting user.
+    - Enforces max size 5 MiB (B2).
+    - Validates image using Pillow via BytesIO (B3).
+    - Stores full relative path "/uploads/barang/<filename>" in DB (B4).
+    - On DB error, removes newly saved file.
+    """
+    current_user = g.current_user
+    user_id = _get_user_id_from_g(current_user)
+    if user_id is None:
+        return jsonify({"status": "error", "message": "Token tidak valid"}), 401
+
+    # ---- 1. Validate multipart file presence ----
+    if "photo" not in request.files:
+        return jsonify({"status": "error", "message": "Tidak ada file foto yang di‑upload"}), 400
+    file = request.files["photo"]
+
+    # ---- 2. Size checks (B2) ----
+    MAX = 5 * 1024 * 1024
+    if request.content_length and request.content_length > MAX + 1024:
+        return jsonify({"status": "error", "message": "Ukuran file melebihi 5 MiB"}), 413
+    data = file.read()
+    if len(data) > MAX:
+        return jsonify({"status": "error", "message": "Ukuran file melebihi 5 MiB"}), 413
+
+    # ---- 3. Pillow verify (B3) ----
+    from io import BytesIO
+    try:
+        Image.open(BytesIO(data)).verify()
+    except Exception:
+        return jsonify({"status": "error", "message": "File bukan gambar valid"}), 400
+
+    # ---- 4. Save file ----
+    upload_dir = os.path.abspath(os.path.join(current_app.root_path, "uploads", "barang"))
+    os.makedirs(upload_dir, exist_ok=True)
+    ext = os.path.splitext(secure_filename(file.filename))[1].lower()
+    filename = f"{uuid4().hex}{ext}"
+    file_path = os.path.join(upload_dir, filename)
+    with open(file_path, "wb") as f:
+        f.write(data)
+
+    # ---- 5. DB update ----
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # Verify ownership
+        barang, err = _get_barang_for_owner(barang_id, user_id, cursor)
+        if err:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            return err
+
+        # Remove old photo if exists (B5)
+        old_foto = barang.get("foto_barang")
+        if old_foto:
+            filename_only = os.path.basename(old_foto)
+            old_path = os.path.abspath(os.path.join(upload_dir, filename_only))
+            upload_root_real = os.path.realpath(upload_dir)
+            if os.path.realpath(old_path).startswith(upload_root_real + os.sep) and os.path.isfile(old_path):
+                os.remove(old_path)
+
+        rel_path = f"/uploads/barang/{filename}"
+        cursor.execute(
+            "UPDATE barang SET foto_barang = %s WHERE barang_id = %s",
+            (rel_path, barang_id)
+        )
+        connection.commit()
+
+        return jsonify({
+            "status": "success",
+            "message": "Foto barang berhasil di‑upload",
+            "data": {
+                "foto_barang": rel_path,
+                "photo_url": rel_path
+            }
+        }), 200
+
+    except Exception:
+        if connection:
+            connection.rollback()
+        import logging
+        logging.exception("Gagal mengupload foto barang")
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+        return jsonify({"status": "error", "message": "Gagal mengupload foto barang"}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
             connection.close()
 
 # ---------------------------------------------------------------------------
@@ -638,3 +922,116 @@ def reject_barang(barang_id):
             cursor.close()
         if connection and connection.is_connected():
             connection.close()
+
+# ------------------------------------------------------------------------
+# PATCH endpoint – update status_barang with transition rules
+# ------------------------------------------------------------------------
+@barang_bp.patch("/api/barang/<int:barang_id>/status")
+@token_required
+def update_barang_status(barang_id):
+    """
+    Update status_barang dengan aturan transisi:
+    - Owner: hanya pending <-> tersedia
+    - Admin: semua transisi
+    - Final state (terjual/didonasikan/dilelang) tidak bisa diubah owner
+    """
+    user_id = _get_user_id_from_g(g.current_user)
+    if user_id is None:
+        return jsonify({"status": "error", "message": "Token tidak valid"}), 401
+
+    is_admin = g.current_user.get("role") == "admin"
+
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or "status_barang" not in body:
+        return jsonify({
+            "status": "error",
+            "message": "Request harus berisi field 'status_barang'"
+        }), 400
+
+    new_status = body["status_barang"]
+    allowed = {"pending", "tersedia", "terjual", "didonasikan", "dilelang"}
+    if new_status not in allowed:
+        return jsonify({
+            "status": "error",
+            "message": f"status_barang tidak valid. Nilai yang diizinkan: {sorted(allowed)}"
+        }), 400
+
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # Ambil data barang
+        cursor.execute(
+            "SELECT pemilik_id, status_barang FROM barang WHERE barang_id = %s",
+            (barang_id,)
+        )
+        barang = cursor.fetchone()
+        if not barang:
+            return jsonify({"status": "error", "message": "Barang tidak ditemukan"}), 404
+
+        # Auth check
+        if not is_admin and barang["pemilik_id"] != user_id:
+            return jsonify({"status": "error", "message": "Bukan pemilik barang"}), 403
+
+        current = barang["status_barang"]
+
+        # Transition rules
+        if is_admin:
+            # Admin: semua transisi diizinkan
+            pass
+        else:
+            # Owner: hanya pending <-> tersedia
+            if current not in {"pending", "tersedia"}:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Status '{current}' tidak dapat diubah oleh pemilik"
+                }), 403
+            if new_status not in {"pending", "tersedia"}:
+                return jsonify({
+                    "status": "error",
+                    "message": f"Status '{new_status}' hanya dapat diatur melalui modul terkait (transaksi/lelang/donasi)"
+                }), 403
+
+        # Update
+        cursor.execute(
+            "UPDATE barang SET status_barang = %s WHERE barang_id = %s",
+            (new_status, barang_id)
+        )
+        connection.commit()
+
+        return jsonify({
+            "status": "success",
+            "message": "Status barang berhasil diperbarui",
+            "data": {
+                "barang_id": barang_id,
+                "status_barang": new_status
+            }
+        }), 200
+
+    except Exception:
+        if connection:
+            connection.rollback()
+        import logging
+        logging.exception("Gagal update status barang")
+        return jsonify({
+            "status": "error",
+            "message": "Gagal update status barang"
+        }), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+
+# ------------------------------------------------------------------------
+# Static file serving – akses foto barang via URL
+# ------------------------------------------------------------------------
+@barang_bp.get("/uploads/barang/<path:filename>")
+def serve_barang_photo(filename):
+    """Serve file foto barang dari folder uploads/barang/."""
+    return send_from_directory(
+        os.path.join(current_app.root_path, "uploads", "barang"),
+        filename
+    )

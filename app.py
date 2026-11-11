@@ -7,6 +7,9 @@ from routes.auth import auth_bp
 from routes.profile import profile_bp
 from routes.transaksi import transaksi_bp
 from routes.barang import barang_bp
+from routes.donasi import donasi_bp
+from routes.lelang import lelang_bp
+from routes.negosiasi import negosiasi_bp
 
 
 app = Flask(__name__)
@@ -17,6 +20,9 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(profile_bp)
 app.register_blueprint(barang_bp)
 app.register_blueprint(transaksi_bp)
+app.register_blueprint(donasi_bp)
+app.register_blueprint(lelang_bp)
+app.register_blueprint(negosiasi_bp)
 
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # Maksimal 5 MB
 
