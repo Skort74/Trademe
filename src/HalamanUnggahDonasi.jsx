@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import PopupSuksesDonasi from './PopupSuksesDonasi';
+
+const MAX_PHOTOS = 5;
 
 const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
   const [isSuccess, setIsSuccess] = useState(false);
+  const [photos, setPhotos] = useState([]); // foto barang yang dipilih
+  const [penerima, setPenerima] = useState(recipientName || ''); // terisi dari kartu, boleh diubah
+  const fileRef = useRef(null);
   const [formData, setFormData] = useState({
     namaBarang: '',
     kategori: '',
@@ -15,6 +20,26 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // Tambah foto (maksimal 5, hanya JPG/PNG)
+  const addPhotos = (e) => {
+    const picked = Array.from(e.target.files).filter((f) => /^image\/(jpe?g|png)$/.test(f.type));
+    const room = MAX_PHOTOS - photos.length;
+    const added = picked.slice(0, room).map((file) => ({
+      id: `${file.name}-${file.lastModified}-${Math.random()}`,
+      file,
+      url: URL.createObjectURL(file),
+    }));
+    setPhotos((prev) => [...prev, ...added]);
+    e.target.value = '';
+  };
+
+  // Hapus satu foto
+  const removePhoto = (id) => {
+    const target = photos.find((p) => p.id === id);
+    if (target) URL.revokeObjectURL(target.url);
+    setPhotos(photos.filter((p) => p.id !== id));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     // Tampilkan popup sukses
@@ -25,7 +50,7 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
   if (isSuccess) {
     return (
       <PopupSuksesDonasi 
-        recipientName={recipientName || 'Yayasan Mitra'} 
+        recipientName={penerima || 'Yayasan Mitra'} 
         onClose={() => onBack && onBack()} 
       />
     );
@@ -110,15 +135,76 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Kolom Kiri: Upload Foto */}
-              <div className="border-2 border-dashed border-[#2F7D5B]/30 rounded-xl bg-[#F8FAF9] flex flex-col items-center justify-center p-8 text-center hover:bg-[#F0FDF4] transition-colors cursor-pointer group">
-                <div className="w-12 h-12 rounded-full bg-[#E8F5E9] text-[#2F7D5B] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                </div>
-                <p className="font-bold text-[#1F2A24] mb-1">Tambahkan foto barang</p>
-                <p className="text-xs text-gray-500 mb-4">Unggah hingga 5 foto, format JPG atau PNG</p>
-                <button type="button" className="px-4 py-2 border border-[#2F7D5B] text-[#2F7D5B] rounded-lg text-sm font-bold hover:bg-[#2F7D5B] hover:text-white transition-colors">
-                  Pilih Foto
-                </button>
+              <div
+                onClick={() => {
+                  if (photos.length === 0) fileRef.current.click();
+                }}
+                className={`border-2 border-dashed border-[#2F7D5B]/30 rounded-xl bg-[#F8FAF9] flex flex-col items-center justify-center text-center transition-colors group ${
+                  photos.length === 0 ? 'p-8 cursor-pointer hover:bg-[#F0FDF4]' : 'p-4'
+                }`}
+              >
+                {/* Input file tersembunyi */}
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  multiple
+                  onChange={addPhotos}
+                  onClick={(e) => e.stopPropagation()}
+                  className="hidden"
+                />
+
+                {photos.length === 0 ? (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-[#E8F5E9] text-[#2F7D5B] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </div>
+                    <p className="font-bold text-[#1F2A24] mb-1">Tambahkan foto barang</p>
+                    <p className="text-xs text-gray-500 mb-4">Unggah hingga 5 foto, format JPG atau PNG</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileRef.current.click();
+                      }}
+                      className="px-4 py-2 border border-[#2F7D5B] text-[#2F7D5B] rounded-lg text-sm font-bold hover:bg-[#2F7D5B] hover:text-white transition-colors"
+                    >
+                      Pilih Foto
+                    </button>
+                  </>
+                ) : (
+                  <div className="w-full">
+                    {/* Foto pertama tampil besar, sisanya 2 kolom di bawahnya */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {photos.map((p, i) => (
+                        <div
+                          key={p.id}
+                          className={`relative overflow-hidden rounded-xl bg-white ${
+                            i === 0 ? 'col-span-2 aspect-[4/3]' : 'aspect-square'
+                          }`}
+                        >
+                          <img src={p.url} alt={p.file.name} className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(p.id)}
+                            aria-label={`Hapus ${p.file.name}`}
+                            className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#1F2A24]/80 text-xs text-white hover:bg-[#1F2A24]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={photos.length >= MAX_PHOTOS}
+                      onClick={() => fileRef.current.click()}
+                      className="mt-3 px-4 py-2 border border-[#2F7D5B] text-[#2F7D5B] rounded-lg text-sm font-bold hover:bg-[#2F7D5B] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[#2F7D5B]"
+                    >
+                      {photos.length >= MAX_PHOTOS ? 'Maksimal 5 foto' : `Tambah Foto (${photos.length}/${MAX_PHOTOS})`}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Kolom Kanan: Form Input */}
@@ -190,11 +276,13 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
                   </label>
                   <input 
                     type="text" 
-                    readOnly
-                    value={recipientName || 'Siti Aminah (Terverifikasi)'}
-                    className="w-full p-3 rounded-lg border border-gray-200 bg-gray-50 text-gray-600 cursor-not-allowed"
+                    value={penerima}
+                    onChange={(e) => setPenerima(e.target.value)}
+                    placeholder="Nama penerima"
+                    required
+                    className="w-full p-3 rounded-lg border border-gray-200 focus:border-[#2F7D5B] outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Penerima sudah dipilih dari halaman sebelumnya.</p>
+                  <p className="text-xs text-gray-500 mt-1">Terisi otomatis dari kartu yang dipilih, boleh diubah.</p>
                 </div>
 
                 <div>

@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import TradeMeHome from "./TradeMeHome";
 import HalamanDetailLelang from "./HalamanDetailLelang";
@@ -9,39 +10,72 @@ import HalamanCheckout from "./HalamanCheckout";
 import HalamanSuksesPembayaran from "./HalamanSuksesPembayaran";
 import HalamanChat from "./HalamanChat";
 import PanelAdminBarang from "./PanelAdminBarang";
+<<<<<<< Updated upstream
 import HalamanDonasi from "./HalamanDonasi"; 
 import { getCurrentSession, clearCurrentSession } from "./utils/auth";
+=======
+import HalamanDonasi from "./HalamanDonasi";
+import UnggahBarang from "./UnggahBarang";
+
+import {
+  getCurrentSession,
+  clearCurrentSession,
+} from "./utils/auth";
+>>>>>>> Stashed changes
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState("login");
-  const [currentUser, setCurrentUser] = useState(() => getCurrentSession());
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [currentPage, setCurrentPage] = useState(() => {
+    return window.location.pathname === "/unggah"
+      ? "unggah"
+      : "login";
+  });
+
+  const [currentUser, setCurrentUser] = useState(
+    () => getCurrentSession()
+  );
+
+  const [selectedProduct, setSelectedProduct] =
+    useState(null);
+
   const [navParams, setNavParams] = useState({});
 
+  // NAVIGASI HALAMAN
   const handleNavigate = (page, params = {}) => {
     setNavParams(params);
+
     if (params.product) {
       setSelectedProduct(params.product);
     }
+
     setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
+  // LOGIN BERHASIL
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
     handleNavigate("home");
   };
 
+  // LOGOUT
   const handleLogout = () => {
     clearCurrentSession();
     setCurrentUser(null);
+
     handleNavigate("login", {
-      initialNotice: "Anda telah keluar. Silakan masukkan kredensial Anda untuk masuk kembali.",
+      initialNotice:
+        "Anda telah keluar. Silakan masukkan kredensial Anda untuk masuk kembali.",
     });
   };
 
+  // PILIH PRODUK
   const handleSelectProduct = (product) => {
     setSelectedProduct(product);
+
     if (product && product.category === "Lelang") {
       handleNavigate("lelang_detail", { product });
     } else {
@@ -51,6 +85,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen w-full bg-[#FFFFFF]">
+
       {/* 1. HALAMAN LOGIN */}
       {currentPage === "login" && (
         <HalamanLogin
@@ -79,7 +114,7 @@ export default function App() {
         />
       )}
 
-      {/* 4. DETAIL CARD */}
+      {/* 4. DETAIL BARANG */}
       {currentPage === "detail" && (
         <DetailCard
           product={selectedProduct || navParams.product}
@@ -89,8 +124,13 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
+<<<<<<< Updated upstream
       
       {/* 4b. HALAMAN DETAIL LELANG */}
+=======
+
+      {/* 5. DETAIL LELANG */}
+>>>>>>> Stashed changes
       {currentPage === "lelang_detail" && (
         <HalamanDetailLelang
           product={selectedProduct || navParams.product}
@@ -101,29 +141,37 @@ export default function App() {
         />
       )}
 
-      {/* 5. HALAMAN AJUKAN TUKAR */}
+      {/* 6. AJUKAN TUKAR */}
       {currentPage === "ajukan_tukar" && (
         <HalamanAjukanTukar
           product={selectedProduct || navParams.product}
-          onBack={() => handleNavigate("detail", { product: selectedProduct || navParams.product })}
+          onBack={() =>
+            handleNavigate("detail", {
+              product: selectedProduct || navParams.product,
+            })
+          }
           onNavigate={handleNavigate}
           currentUser={currentUser}
           onLogout={handleLogout}
         />
       )}
 
-      {/* 6. HALAMAN CHECKOUT */}
+      {/* 7. CHECKOUT */}
       {currentPage === "checkout" && (
         <HalamanCheckout
           product={selectedProduct || navParams.product}
-          onBack={() => handleNavigate("detail", { product: selectedProduct || navParams.product })}
+          onBack={() =>
+            handleNavigate("detail", {
+              product: selectedProduct || navParams.product,
+            })
+          }
           onNavigate={handleNavigate}
           currentUser={currentUser}
           onLogout={handleLogout}
         />
       )}
 
-      {/* 7. HALAMAN PEMBAYARAN BERHASIL */}
+      {/* 8. PEMBAYARAN BERHASIL */}
       {currentPage === "payment_success" && (
         <HalamanSuksesPembayaran
           product={selectedProduct || navParams.product}
@@ -134,7 +182,7 @@ export default function App() {
         />
       )}
 
-      {/* 8. HALAMAN CHAT */}
+      {/* 9. HALAMAN CHAT */}
       {currentPage === "chat" && (
         <HalamanChat
           product={selectedProduct || navParams.product}
@@ -145,20 +193,32 @@ export default function App() {
         />
       )}
 
-      {/* 9. PANEL ADMIN */}
+      {/* 10. PANEL ADMIN */}
       {currentPage === "admin" && (
-        <PanelAdminBarang onNavigate={handleNavigate} />
+        <PanelAdminBarang
+          onNavigate={handleNavigate}
+        />
       )}
 
-      {/* 10. HALAMAN DONASI */}
+      {/* 11. HALAMAN DONASI */}
       {currentPage === "donasi" && (
-        <HalamanDonasi 
+        <HalamanDonasi
           onBack={() => handleNavigate("home")}
           onNavigate={handleNavigate}
           currentUser={currentUser}
           onLogout={handleLogout}
         />
       )}
+
+      {/* 12. HALAMAN UNGGAH BARANG */}
+      {currentPage === "unggah" && (
+        <UnggahBarang
+          onNavigate={handleNavigate}
+          currentUser={currentUser}
+          onLogout={handleLogout}
+        />
+      )}
+
     </div>
   );
 }

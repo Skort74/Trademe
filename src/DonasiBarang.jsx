@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { SiteHeader, SiteFooter, Icon } from "./TradeMeLayout";
+import AjukanPenerima from "./AjukanPenerima";
 
 // Foto taruh di public/images/. Kalau file belum ada, area foto tampil hijau polos.
 const RECIPIENTS = [
@@ -77,6 +78,7 @@ function Photo({ src, alt }) {
 
 export default function DonasiBarang() {
   const [filter, setFilter] = useState(FILTERS[0]);
+  const [showForm, setShowForm] = useState(false);
   const list = RECIPIENTS.filter((r) => r.type === filter);
 
   return (
@@ -178,6 +180,7 @@ export default function DonasiBarang() {
             </div>
             <button
               type="button"
+              onClick={() => setShowForm(true)}
               className="rounded-xl border border-trade-border bg-white px-4 py-2.5 text-sm font-semibold transition hover:bg-trade-50"
             >
               Ajukan Sebagai Penerima →
@@ -185,6 +188,8 @@ export default function DonasiBarang() {
           </div>
         </section>
       </main>
+
+      {showForm && <AjukanPenerima onClose={() => setShowForm(false)} />}
 
       <SiteFooter />
     </div>

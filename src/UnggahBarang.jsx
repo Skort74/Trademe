@@ -1,22 +1,57 @@
+
 import React, { useEffect, useRef, useState } from "react";
-import { SiteHeader, SiteFooter } from "./TradeMeLayout";
+
+// ==========================================
+// DATA JENIS TRANSAKSI
+// ==========================================
 
 const TYPES = [
-  { id: "Jual", desc: "Pembeli membayar dengan harga tetap", badge: "bg-trade-100 text-trade-600" },
-  { id: "Tukar", desc: "Tukar dengan barang lain", badge: "bg-sky-100 text-sky-700" },
-  { id: "Lelang", desc: "Terima penawaran tertinggi", badge: "bg-amber-100 text-amber-700" },
-  { id: "Donasi", desc: "Berikan gratis ke yang membutuhkan", badge: "bg-rose-100 text-rose-700" },
+  {
+    id: "Jual",
+    desc: "Jual barang dengan harga tetap",
+  },
+  {
+    id: "Tukar",
+    desc: "Tukar dengan barang lain",
+  },
+  {
+    id: "Lelang",
+    desc: "Terima penawaran tertinggi",
+  },
+  {
+    id: "Donasi",
+    desc: "Donasikan barang layak pakai",
+  },
 ];
 
-// Samakan dengan filter di TradeMeHome.jsx
-const CATEGORIES = ["Furnitur", "Kendaraan", "Elektronik", "Dekorasi", "Musik", "Peralatan"];
-const CONDITIONS = ["Sangat baik", "Baik", "Cukup baik"];
+const CATEGORIES = [
+  "Furnitur",
+  "Kendaraan",
+  "Elektronik",
+  "Dekorasi",
+  "Musik",
+  "Peralatan",
+];
+
+const CONDITIONS = [
+  "Sangat baik",
+  "Baik",
+  "Cukup baik",
+];
+
 const MAX_PHOTOS = 5;
 
-// Isian harga berubah sesuai jenis transaksi (Donasi tidak punya isian harga)
 const PRICE_FIELD = {
-  Jual: { label: "Harga jual", placeholder: "Contoh: 100.000", money: true },
-  Lelang: { label: "Harga awal lelang", placeholder: "Contoh: 100.000", money: true },
+  Jual: {
+    label: "Harga jual",
+    placeholder: "Contoh: 100.000",
+    money: true,
+  },
+  Lelang: {
+    label: "Harga awal lelang",
+    placeholder: "Contoh: 100.000",
+    money: true,
+  },
   Tukar: {
     label: "Ingin ditukar dengan",
     placeholder: "Contoh: Sepeda lipat atau kamera",
@@ -24,223 +59,351 @@ const PRICE_FIELD = {
   },
 };
 
-const base =
-  "w-full rounded-xl border border-trade-border bg-white px-3.5 py-3 text-sm outline-none transition placeholder:text-trade-muted/70 focus:border-trade-500 focus:ring-2 focus:ring-trade-500/20";
-const inputCls = `${base} text-trade-dark`;
+// ==========================================
+// STYLE INPUT
+// ==========================================
 
-function StepHeading({ n, title, hint }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-trade-500 text-sm font-bold text-white">
-        {n}
-      </span>
-      <div>
-        <h2 className="text-base font-bold leading-tight">{title}</h2>
-        <p className="text-xs text-trade-muted">{hint}</p>
-      </div>
-    </div>
-  );
-}
+const inputClass =
+  "w-full rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100";
 
 function Field({ label, children }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold">{label}</span>
+    <div className="w-full">
+      <label className="mb-2 block text-sm font-semibold text-gray-900">
+        {label}
+      </label>
       {children}
-    </label>
-  );
-}
-
-function Select({ value, onChange, placeholder, options }) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={onChange}
-        required
-        className={`${base} appearance-none pr-9 ${value ? "text-trade-dark" : "text-trade-muted"}`}
-      >
-        <option value="" disabled>
-          {placeholder}
-        </option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-      <svg
-        className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-trade-muted"
-        width="10"
-        height="6"
-        viewBox="0 0 10 6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M1 1l4 4 4-4" />
-      </svg>
     </div>
   );
 }
 
-export default function UnggahBarang() {
-  const params = new URLSearchParams(window.location.search);
-  const penerima = params.get("penerima");
-  const [type, setType] = useState(() =>
-    TYPES.some((t) => t.id === params.get("jenis")) ? params.get("jenis") : "Jual",
+// ==========================================
+// HALAMAN UTAMA
+// ==========================================
+
+export default function UnggahBarang({
+  onNavigate,
+  currentUser,
+}) {
+  const params = new URLSearchParams(
+    window.location.search
   );
-  const [photos, setPhotos] = useState([]); // { id, file, url }
+
+  const [type, setType] = useState(() => {
+    const jenis = params.get("jenis");
+
+    return TYPES.some((t) => t.id === jenis)
+      ? jenis
+      : "Jual";
+  });
+
   const [form, setForm] = useState({
     name: "",
     category: "",
     condition: "",
     description: "",
     price: "",
+    recipient: params.get("penerima") || "",
     location: "",
   });
+
+  const [photos, setPhotos] = useState([]);
+  const [selectedPhotoId, setSelectedPhotoId] =
+    useState(null);
+
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
 
   const fileRef = useRef(null);
   const photosRef = useRef([]);
+
   photosRef.current = photos;
 
-  // Bersihkan URL preview saat halaman ditutup
-  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
+  // Membersihkan URL foto saat komponen ditutup
+  useEffect(() => {
+    return () => {
+      photosRef.current.forEach((photo) => {
+        URL.revokeObjectURL(photo.url);
+      });
+    };
+  }, []);
 
   const priceField = PRICE_FIELD[type];
 
-  const setField = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const activePhoto =
+    photos.find((p) => p.id === selectedPhotoId) ||
+    photos[0];
+
+  // ==========================================
+  // NAVIGASI
+  // ==========================================
+
+  const handleBack = () => {
+    if (typeof onNavigate === "function") {
+      onNavigate("home");
+    } else {
+      window.location.assign("/");
+    }
+  };
+
+  // ==========================================
+  // MENGUBAH INPUT
+  // ==========================================
+
+  const setField = (key) => (e) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: e.target.value,
+    }));
+
+    setDone(false);
+  };
+
+  // ==========================================
+  // FORMAT HARGA
+  // ==========================================
 
   const setPrice = (e) => {
-    let v = e.target.value;
-    if (priceField.money) {
-      const digits = v.replace(/\D/g, "");
-      v = digits ? Number(digits).toLocaleString("id-ID") : "";
+    let value = e.target.value;
+
+    if (priceField?.money) {
+      const digits = value.replace(/\D/g, "");
+
+      value = digits
+        ? Number(digits).toLocaleString("id-ID")
+        : "";
     }
-    setForm((f) => ({ ...f, price: v }));
+
+    setForm((prev) => ({
+      ...prev,
+      price: value,
+    }));
+
+    setDone(false);
   };
+
+  // ==========================================
+  // PILIH JENIS TRANSAKSI
+  // ==========================================
 
   const chooseType = (id) => {
     setType(id);
-    setForm((f) => ({ ...f, price: "" }));
+
+    setForm((prev) => ({
+      ...prev,
+      price: "",
+    }));
+
+    setDone(false);
+    setError("");
   };
 
+  // ==========================================
+  // TAMBAH FOTO
+  // ==========================================
+
   const addPhotos = (e) => {
-    const picked = Array.from(e.target.files).filter((f) => /^image\/(jpe?g|png)$/.test(f.type));
-    const room = MAX_PHOTOS - photos.length;
-    const added = picked.slice(0, room).map((file) => ({
-      id: `${file.name}-${file.lastModified}-${Math.random()}`,
-      file,
-      url: URL.createObjectURL(file),
-    }));
-    setPhotos((prev) => [...prev, ...added]);
-    setError("");
+    const files = Array.from(e.target.files || []);
+
+    const validFiles = files.filter((file) =>
+      /^image\/(jpeg|png)$/.test(file.type)
+    );
+
+    const remaining = Math.max(
+      0,
+      MAX_PHOTOS - photos.length
+    );
+
+    const newPhotos = validFiles
+      .slice(0, remaining)
+      .map((file) => ({
+        id: `${file.name}-${file.lastModified}-${Math.random()}`,
+        file,
+        url: URL.createObjectURL(file),
+      }));
+
+    setPhotos((prev) => [
+      ...prev,
+      ...newPhotos,
+    ]);
+
+    if (!selectedPhotoId && newPhotos.length > 0) {
+      setSelectedPhotoId(newPhotos[0].id);
+    }
+
+    if (validFiles.length === 0) {
+      setError("Pilih foto JPG, JPEG, atau PNG.");
+    } else if (validFiles.length > remaining) {
+      setError("Maksimal hanya 5 foto.");
+    } else if (validFiles.length !== files.length) {
+      setError("Beberapa file bukan JPG atau PNG.");
+    } else {
+      setError("");
+    }
+
+    setDone(false);
     e.target.value = "";
   };
 
+  // ==========================================
+  // HAPUS FOTO
+  // ==========================================
+
   const removePhoto = (id) => {
-    const target = photos.find((p) => p.id === id);
-    if (target) URL.revokeObjectURL(target.url);
-    setPhotos(photos.filter((p) => p.id !== id));
+    const target = photos.find(
+      (photo) => photo.id === id
+    );
+
+    if (target) {
+      URL.revokeObjectURL(target.url);
+    }
+
+    const remainingPhotos = photos.filter(
+      (photo) => photo.id !== id
+    );
+
+    setPhotos(remainingPhotos);
+
+    if (selectedPhotoId === id) {
+      setSelectedPhotoId(
+        remainingPhotos[0]?.id || null
+      );
+    }
+
+    setError("");
+    setDone(false);
   };
+
+  // ==========================================
+  // SUBMIT FORM
+  // ==========================================
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (photos.length === 0) {
       setError("Tambahkan minimal 1 foto barang.");
       return;
     }
-    const payload = { type, ...form, photos: photos.map((p) => p.file) };
-    // TODO: kirim ke backend setelah endpoint API siap
+
+    const payload = {
+      type,
+      ...form,
+      price:
+        type === "Donasi"
+          ? null
+          : priceField?.money
+          ? Number(form.price.replace(/\D/g, ""))
+          : form.price,
+      photos: photos.map((photo) => photo.file),
+    };
+
     console.log("Data barang:", payload);
+    console.log("Pengguna:", currentUser);
+
+    setError("");
     setDone(true);
   };
 
+  // ==========================================
+  // TAMPILAN
+  // ==========================================
+
   return (
-    <div className="flex min-h-screen flex-col bg-trade-bg font-sans text-trade-dark">
-      {/* Header */}
-      <SiteHeader />
+    <div className="min-h-screen bg-[#F7F9F8] font-sans">
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-5 py-8">
-        <p className="text-[11px] font-bold tracking-[0.14em] text-trade-500">
-          BERIKAN KESEMPATAN KEDUA
-        </p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Unggah barang</h1>
-        <p className="mt-1.5 text-sm text-trade-muted">
-          Lengkapi informasi agar barangmu mudah ditemukan.
-        </p>
+      {/* HEADER */}
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
+        <div className="relative mx-auto flex h-[72px] max-w-5xl items-center justify-center px-5">
 
-        <form onSubmit={handleSubmit} className="mt-8">
-          {/* Langkah 1 */}
-          <StepHeading n="1" title="Pilih jenis transaksi" hint="Apa yang ingin kamu lakukan?" />
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {TYPES.map((t) => {
-              const active = type === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => chooseType(t.id)}
-                  aria-pressed={active}
-                  className={`rounded-xl border bg-white p-3.5 text-left transition ${
+          <button
+            type="button"
+            onClick={handleBack}
+            className="absolute left-5 flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-900"
+          >
+            ← Kembali
+          </button>
+
+          <button
+            type="button"
+            onClick={handleBack}
+            className="text-xl font-extrabold text-gray-900"
+          >
+            TradeMe
+          </button>
+
+        </div>
+      </header>
+
+      {/* MAIN CONTENT */}
+      <main className="mx-auto w-full max-w-4xl px-4 py-8">
+
+        {/* JUDUL */}
+        <div className="mb-6">
+          <p className="text-xs font-bold tracking-widest text-emerald-700">
+            BARANG LAMA, MANFAAT BARU
+          </p>
+
+          <h1 className="mt-2 text-2xl font-extrabold text-gray-900">
+            Unggah Barang
+          </h1>
+
+          <p className="mt-1 text-sm text-gray-500">
+            Lengkapi informasi barang yang ingin kamu
+            jual, tukar, lelang, atau donasikan.
+          </p>
+        </div>
+
+        {/* JENIS TRANSAKSI */}
+        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+          {TYPES.map((item) => {
+            const active = type === item.id;
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => chooseType(item.id)}
+                className={`rounded-xl border p-3 text-left transition ${
+                  active
+                    ? "border-emerald-700 bg-emerald-50 ring-1 ring-emerald-700"
+                    : "border-gray-200 bg-white hover:border-emerald-300"
+                }`}
+              >
+                <span
+                  className={`block text-sm font-bold ${
                     active
-                      ? "border-trade-500 ring-1 ring-trade-500"
-                      : "border-trade-border hover:border-trade-200"
+                      ? "text-emerald-800"
+                      : "text-gray-900"
                   }`}
                 >
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.badge}`}
-                  >
-                    {t.id}
-                  </span>
-                  <span className="mt-2 block text-sm font-bold">{t.id}</span>
-                  <span className="mt-0.5 block text-[11px] leading-snug text-trade-muted">
-                    {t.desc}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  {item.id}
+                </span>
 
-          <hr className="my-8 border-trade-border" />
+                <span className="mt-1 block text-xs text-gray-500">
+                  {item.desc}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Langkah 2 */}
-          <StepHeading
-            n="2"
-            title="Isi detail barang"
-            hint="Berikan informasi yang jelas dan jujur."
-          />
-          {type === "Donasi" && penerima && (
-            <p className="mt-3 rounded-xl bg-trade-100 px-4 py-2.5 text-xs font-medium text-trade-700">
-              Donasi untuk: {penerima}
-            </p>
-          )}
+        {/* FORM */}
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:p-6"
+        >
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
 
-          <div className="mt-4 grid gap-5 md:grid-cols-5">
-            <div className="flex flex-col md:col-span-2">
-              <div className="flex min-h-[18rem] flex-1 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-trade-200 bg-trade-50 p-6 text-center">
-                <svg
-                  className="mx-auto text-trade-500"
-                  width="26"
-                  height="26"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-                <p className="mt-2 text-sm font-bold text-trade-500">Tambahkan foto barang</p>
-                <p className="mt-0.5 text-[11px] text-trade-muted">
-                  Unggah hingga {MAX_PHOTOS} foto. Format JPG/PNG.
-                </p>
+            {/* ================================= */}
+            {/* KOLOM KIRI - UPLOAD FOTO */}
+            {/* ================================= */}
+
+            <div className="min-w-0">
+
+              <div className="flex min-h-[33rem] w-full flex-col rounded-2xl border-2 border-dashed border-emerald-200 bg-[#F7FAF8] p-4">
+
+                {/* INPUT FILE */}
                 <input
                   ref={fileRef}
                   type="file"
@@ -249,126 +412,293 @@ export default function UnggahBarang() {
                   onChange={addPhotos}
                   className="hidden"
                 />
-                <button
-                  type="button"
-                  onClick={() => fileRef.current.click()}
-                  disabled={photos.length >= MAX_PHOTOS}
-                  className="mt-3 rounded-lg border border-trade-border bg-white px-4 py-1.5 text-xs font-semibold transition hover:bg-trade-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Pilih Foto
-                </button>
 
-                {photos.length > 0 && (
-                  <div className="mt-4 grid w-full grid-cols-5 gap-2">
-                    {photos.map((p) => (
-                      <div key={p.id} className="relative aspect-square">
-                        <img
-                          src={p.url}
-                          alt={p.file.name}
-                          className="h-full w-full rounded-lg object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removePhoto(p.id)}
-                          aria-label={`Hapus ${p.file.name}`}
-                          className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-trade-dark text-[10px] text-white"
-                        >
-                          ✕
-                        </button>
+                {/* BELUM ADA FOTO */}
+                {photos.length === 0 ? (
+                  <div className="flex flex-1 flex-col items-center justify-center text-center">
+
+                    <svg
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#16805D"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+
+                    <p className="mt-3 text-sm font-bold text-emerald-700">
+                      Tambahkan foto barang
+                    </p>
+
+                    <p className="mt-1 text-xs text-gray-400">
+                      Unggah hingga 5 foto. Format JPG/PNG.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="mt-4 rounded-lg border border-gray-200 bg-white px-5 py-2 text-xs font-semibold text-gray-900 hover:bg-gray-50"
+                    >
+                      Pilih Foto
+                    </button>
+
+                  </div>
+                ) : (
+                  /* SUDAH ADA FOTO */
+                  <div className="flex flex-1 flex-col items-center justify-center">
+
+                    {/* FOTO UTAMA */}
+                    <div className="relative flex h-[300px] w-full items-center justify-center rounded-xl bg-white">
+
+                      <img
+                        src={activePhoto.url}
+                        alt={activePhoto.file.name}
+                        className="h-full w-full rounded-xl object-contain"
+                      />
+
+                      {/* HAPUS FOTO UTAMA */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removePhoto(activePhoto.id)
+                        }
+                        aria-label="Hapus foto"
+                        className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-gray-800 text-sm text-white shadow-md hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+
+                    </div>
+
+                    {/* TOMBOL TAMBAH FOTO */}
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      disabled={
+                        photos.length >= MAX_PHOTOS
+                      }
+                      className="mt-4 rounded-xl border border-emerald-700 bg-white px-5 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Tambah Foto ({photos.length}/{MAX_PHOTOS})
+                    </button>
+
+                    {/* THUMBNAIL */}
+                    {photos.length > 1 && (
+                      <div className="mt-5 grid w-full grid-cols-4 gap-2">
+
+                        {photos.map((photo) => {
+                          const active =
+                            activePhoto.id === photo.id;
+
+                          return (
+                            <div
+                              key={photo.id}
+                              className="relative"
+                            >
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedPhotoId(photo.id)
+                                }
+                                className={`h-16 w-full overflow-hidden rounded-lg border-2 bg-white ${
+                                  active
+                                    ? "border-emerald-700"
+                                    : "border-gray-200"
+                                }`}
+                              >
+                                <img
+                                  src={photo.url}
+                                  alt={photo.file.name}
+                                  className="h-full w-full object-contain"
+                                />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removePhoto(photo.id)
+                                }
+                                aria-label={`Hapus ${photo.file.name}`}
+                                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-[10px] text-white hover:bg-red-600"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          );
+                        })}
+
                       </div>
-                    ))}
+                    )}
+
                   </div>
                 )}
-              </div>
-              {error && <p className="mt-2 text-xs font-medium text-rose-600">{error}</p>}
-            </div>
-            <div className="md:col-span-3">
-              <div className="space-y-4">
-                <Field label="Nama barang">
-                  <input
-                    type="text"
-                    required
-                    value={form.name}
-                    onChange={setField("name")}
-                    placeholder="Contoh: Sepeda kota vintage"
-                    className={inputCls}
-                  />
-                </Field>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Kategori">
-                    <Select
-                      value={form.category}
-                      onChange={setField("category")}
-                      placeholder="Pilih kategori"
-                      options={CATEGORIES}
-                    />
-                  </Field>
-                  <Field label="Kondisi">
-                    <Select
-                      value={form.condition}
-                      onChange={setField("condition")}
-                      placeholder="Pilih kondisi"
-                      options={CONDITIONS}
-                    />
-                  </Field>
-                </div>
-
-                <Field label="Deskripsi">
-                  <textarea
-                    rows={4}
-                    value={form.description}
-                    onChange={setField("description")}
-                    placeholder="Ceritakan kondisi, ukuran, kekurangan, dan keterangan lainnya."
-                    className={`${inputCls} resize-y`}
-                  />
-                </Field>
-
-                {priceField && (
-                  <Field label={priceField.label}>
-                    <input
-                      type="text"
-                      required
-                      inputMode={priceField.money ? "numeric" : "text"}
-                      value={form.price}
-                      onChange={setPrice}
-                      placeholder={priceField.placeholder}
-                      className={inputCls}
-                    />
-                  </Field>
-                )}
-
-                <Field label="Lokasi barang">
-                  <input
-                    type="text"
-                    required
-                    value={form.location}
-                    onChange={setField("location")}
-                    placeholder="Kecamatan di Surabaya"
-                    className={inputCls}
-                  />
-                </Field>
               </div>
 
-              {done && (
-                <p className="mt-5 rounded-xl bg-trade-100 px-4 py-3 text-sm font-medium text-trade-700">
-                  Data barang tercatat (cek console). Belum terhubung ke backend.
+              {/* ERROR FOTO */}
+              {error && (
+                <p className="mt-2 text-xs font-medium text-red-600">
+                  {error}
                 </p>
               )}
 
+            </div>
+
+            {/* ================================= */}
+            {/* KOLOM KANAN - FORM BARANG */}
+            {/* ================================= */}
+
+            <div className="min-w-0 space-y-5">
+
+              {/* NAMA BARANG */}
+              <Field label="Nama barang">
+                <input
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={setField("name")}
+                  placeholder="Contoh: Sepeda kota vintage"
+                  className={inputClass}
+                />
+              </Field>
+
+              {/* KATEGORI DAN KONDISI */}
+              <div className="grid grid-cols-2 gap-4">
+
+                <Field label="Kategori">
+                  <select
+                    required
+                    value={form.category}
+                    onChange={setField("category")}
+                    className={inputClass}
+                  >
+                    <option value="" disabled>
+                      Pilih kategori
+                    </option>
+
+                    {CATEGORIES.map((category) => (
+                      <option
+                        key={category}
+                        value={category}
+                      >
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Kondisi">
+                  <select
+                    required
+                    value={form.condition}
+                    onChange={setField("condition")}
+                    className={inputClass}
+                  >
+                    <option value="" disabled>
+                      Pilih kondisi
+                    </option>
+
+                    {CONDITIONS.map((condition) => (
+                      <option
+                        key={condition}
+                        value={condition}
+                      >
+                        {condition}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+              </div>
+
+              {/* DESKRIPSI */}
+              <Field label="Deskripsi">
+                <textarea
+                  rows={4}
+                  value={form.description}
+                  onChange={setField("description")}
+                  placeholder="Ceritakan kondisi, ukuran, kelengkapan, dan kekurangan barang"
+                  className={`${inputClass} resize-y`}
+                />
+              </Field>
+
+              {/* HARGA */}
+              {priceField && (
+                <Field label={priceField.label}>
+                  <input
+                    type="text"
+                    required
+                    value={form.price}
+                    onChange={setPrice}
+                    inputMode={
+                      priceField.money
+                        ? "numeric"
+                        : "text"
+                    }
+                    placeholder={priceField.placeholder}
+                    className={inputClass}
+                  />
+                </Field>
+              )}
+
+              {/* YAYASAN PENERIMA */}
+              {type === "Donasi" && (
+                <Field label="Yayasan penerima">
+                  <input
+                    type="text"
+                    value={form.recipient}
+                    onChange={setField("recipient")}
+                    placeholder="Contoh: Yayasan Kasih Anak"
+                    className={inputClass}
+                  />
+
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    Terisi otomatis jika memilih yayasan
+                    dari halaman donasi, boleh diubah.
+                  </p>
+                </Field>
+              )}
+
+              {/* LOKASI */}
+              <Field label="Lokasi barang">
+                <input
+                  type="text"
+                  required
+                  value={form.location}
+                  onChange={setField("location")}
+                  placeholder="Kecamatan di Surabaya"
+                  className={inputClass}
+                />
+              </Field>
+
+              {/* NOTIFIKASI */}
+              {done && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+                  Data barang sudah disiapkan.
+                  Silakan cek Console browser.
+                  Data belum tersimpan ke backend.
+                </div>
+              )}
+
+              {/* TOMBOL SUBMIT */}
               <button
                 type="submit"
-                className="mt-6 w-full rounded-xl bg-trade-500 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-trade-600 active:bg-trade-700"
+                className="w-full rounded-xl bg-emerald-700 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-800"
               >
                 Terbitkan Barang
               </button>
+
             </div>
+
           </div>
         </form>
-      </main>
 
-      {/* Footer */}
-      <SiteFooter />
+      </main>
     </div>
   );
 }

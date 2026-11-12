@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import HalamanUnggahDonasi from './HalamanUnggahDonasi';
+import AjukanPenerima from "./AjukanPenerima";
 
 const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
   // State untuk mengontrol tampilan (List Penerima vs Form Unggah)
@@ -8,6 +9,7 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
   
   // State untuk Filter (yayasan / perorangan)
   const [activeTab, setActiveTab] = useState('yayasan');
+  const [showForm, setShowForm] = useState(false);
 
   // Data Dummy Yayasan Mitra
   const recipientsYayasan = [
@@ -218,9 +220,12 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
             <h2 className="text-2xl sm:text-3xl font-bold text-[#1F2A24] mb-2">Ajukan diri sebagai penerima donasi</h2>
             <p className="text-[#718096] text-sm">Data akan diperiksa oleh admin sebelum ditampilkan agar bantuan tepat sasaran.</p>
           </div>
-          <button className="px-8 py-3.5 rounded-xl border-2 border-[#1F2A24] text-[#1F2A24] font-bold text-sm hover:bg-[#1F2A24] hover:text-white transition-all whitespace-nowrap">
+          <button
+            onClick={() => setShowForm(true)}
+            className="px-8 py-3.5 rounded-xl border-2 border-[#1F2A24] text-[#1F2A24] font-bold text-sm hover:bg-[#1F2A24] hover:text-white transition-all whitespace-nowrap"
+>
             Ajukan Sebagai Penerima →
-          </button>
+        </button>
         </div>
       </section>
 
@@ -244,6 +249,7 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
           © {new Date().getFullYear()} TradeMe · Mendukung SDG 1: Tanpa Kemiskinan
         </div>
       </footer>
+      {showForm && <AjukanPenerima onClose={() => setShowForm(false)} / >}
     </div>
   );
 };

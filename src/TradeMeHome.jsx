@@ -220,7 +220,7 @@ export default function TradeMeHome({
             {/* CTA Button */}
             <button 
               className="tm-btn-upload"
-              onClick={() => onNavigate && onNavigate('upload')}
+              onClick={() => onNavigate && onNavigate('unggah')}
             >
               <svg
                 width="15"
