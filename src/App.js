@@ -9,7 +9,7 @@ import HalamanCheckout from "./HalamanCheckout";
 import HalamanSuksesPembayaran from "./HalamanSuksesPembayaran";
 import HalamanChat from "./HalamanChat";
 import PanelAdminBarang from "./PanelAdminBarang";
-import HalamanDonasi from "./HalamanDonasi"; // <--- TAMBAHKAN INI
+import HalamanDonasi from "./HalamanDonasi"; 
 import { getCurrentSession, clearCurrentSession } from "./utils/auth";
 
 export default function App() {
@@ -89,7 +89,8 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
-      {/* 4b. HALAMAN DETAIL LELANG (Khusus untuk kategori Lelang) */}
+      
+      {/* 4b. HALAMAN DETAIL LELANG */}
       {currentPage === "lelang_detail" && (
         <HalamanDetailLelang
           product={selectedProduct || navParams.product}
