@@ -18,11 +18,14 @@ function Field({ label, children }) {
   );
 }
 
-export default function AjukanPenerima({ onClose }) {
+export default function AjukanPenerima({ onClose, recipientType = "" }) {
+  const isRegisteringPerson = recipientType === "perorangan";
+
   // Nama key sama dengan variabel di ketentuan backend
   const [form, setForm] = useState({
-    tipe_penerima: "",
+    tipe_penerima: recipientType,
     nama_lembaga: "",
+    nama_penerima: "",
     lokasi: "",
     alasan_kebutuhan: "",
   });
@@ -58,6 +61,8 @@ export default function AjukanPenerima({ onClose }) {
     data.append("tipe_penerima", form.tipe_penerima);
     if (form.tipe_penerima === "yayasan") {
       data.append("nama_lembaga", form.nama_lembaga.trim());
+    } else if (form.tipe_penerima === "perorangan") {
+      data.append("nama_penerima", form.nama_penerima.trim());
     }
     data.append("lokasi", form.lokasi.trim());
     files.forEach((f) => data.append("dokumen_pendukung", f));
@@ -89,10 +94,12 @@ export default function AjukanPenerima({ onClose }) {
               </Icon>
             </span>
             <h2 id="ajukan-title" className="mt-4 text-lg font-extrabold">
-              Pengajuan terkirim
+              {isRegisteringPerson ? "Pendaftaran terkirim" : "Pengajuan terkirim"}
             </h2>
             <p className="mt-1 text-sm text-trade-muted">
-              Tim TradeMe akan memverifikasi datamu sebelum kamu terdaftar sebagai penerima.
+              {isRegisteringPerson
+                ? "Tim TradeMe akan memverifikasi data calon penerima sebelum ditampilkan."
+                : "Tim TradeMe akan memverifikasi datamu sebelum kamu terdaftar sebagai penerima."}
             </p>
             <p className="mt-3 text-[11px] text-trade-muted">
               Catatan pengembangan: belum terhubung ke backend (data dicetak di console).
@@ -110,13 +117,17 @@ export default function AjukanPenerima({ onClose }) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-bold tracking-[0.14em] text-trade-500">
-                  BUTUH BANTUAN BARANG?
+                  {isRegisteringPerson ? "DAFTARKAN CALON PENERIMA" : "BUTUH BANTUAN BARANG?"}
                 </p>
                 <h2 id="ajukan-title" className="mt-1 text-xl font-extrabold tracking-tight">
-                  Ajukan sebagai penerima donasi
+                  {isRegisteringPerson
+                    ? "Daftarkan mereka yang membutuhkan"
+                    : "Ajukan sebagai penerima donasi"}
                 </h2>
                 <p className="mt-1 text-xs text-trade-muted">
-                  Isi data berikut agar tim TradeMe dapat memverifikasi pengajuanmu.
+                  {isRegisteringPerson
+                    ? "Isi data calon penerima agar tim TradeMe dapat melakukan verifikasi."
+                    : "Isi data berikut agar tim TradeMe dapat memverifikasi pengajuanmu."}
                 </p>
               </div>
               <button
@@ -132,6 +143,7 @@ export default function AjukanPenerima({ onClose }) {
             </div>
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              {!recipientType && (
               <fieldset>
                 <legend className="mb-1.5 text-xs font-semibold">Tipe penerima</legend>
                 <div className="grid grid-cols-2 gap-3">
@@ -153,6 +165,7 @@ export default function AjukanPenerima({ onClose }) {
                   ))}
                 </div>
               </fieldset>
+              )}
 
               {form.tipe_penerima === "yayasan" && (
                 <Field label="Nama yayasan">
@@ -162,6 +175,19 @@ export default function AjukanPenerima({ onClose }) {
                     value={form.nama_lembaga}
                     onChange={setField("nama_lembaga")}
                     placeholder="Contoh: Yayasan Kasih Anak"
+                    className={inputCls}
+                  />
+                </Field>
+              )}
+
+              {form.tipe_penerima === "perorangan" && (
+                <Field label="Nama calon penerima">
+                  <input
+                    type="text"
+                    required
+                    value={form.nama_penerima}
+                    onChange={setField("nama_penerima")}
+                    placeholder="Contoh: Ibu Siti Aminah"
                     className={inputCls}
                   />
                 </Field>
@@ -184,7 +210,11 @@ export default function AjukanPenerima({ onClose }) {
                   required
                   value={form.alasan_kebutuhan}
                   onChange={setField("alasan_kebutuhan")}
-                  placeholder="Ceritakan mengapa kamu membutuhkan bantuan barang."
+                  placeholder={
+                    isRegisteringPerson
+                      ? "Ceritakan kondisi dan alasan calon penerima membutuhkan bantuan barang."
+                      : "Ceritakan mengapa kamu membutuhkan bantuan barang."
+                  }
                   className={`${inputCls} resize-y`}
                 />
               </Field>
@@ -249,7 +279,7 @@ export default function AjukanPenerima({ onClose }) {
                   type="submit"
                   className="flex-1 rounded-xl bg-trade-500 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-trade-600 active:bg-trade-700"
                 >
-                  Kirim Pengajuan
+                  {isRegisteringPerson ? "Daftarkan Penerima" : "Kirim Pengajuan"}
                 </button>
               </div>
             </form>

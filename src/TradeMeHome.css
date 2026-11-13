@@ -112,6 +112,13 @@
   color: #276B4E;
 }
 
+.tm-profile-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+}
+
 .tm-badge-notification {
   position: absolute;
   top: -6px;

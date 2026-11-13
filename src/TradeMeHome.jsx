@@ -103,7 +103,6 @@ const ALL_PRODUCTS = [
 export default function TradeMeHome({
   onNavigate,
   currentUser,
-  onLogout,
   onSelectProduct,
 }) {
   const [activeTab, setActiveTab] = useState("Semua");
@@ -115,7 +114,6 @@ export default function TradeMeHome({
   const [currentCity, setCurrentCity] = useState("Surabaya");
   const [favorites, setFavorites] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleFavorite = (id) => {
     setFavorites((prev) => ({
@@ -203,7 +201,6 @@ export default function TradeMeHome({
       className="tm-app"
       onClick={() => {
         setActiveDropdown(null);
-        setShowProfileMenu(false);
       }}
     >
       {/* ================= NAVBAR ================= */}
@@ -259,14 +256,14 @@ export default function TradeMeHome({
             </div>
 
             {/* Profil */}
-            <div className="relative">
-              <div
-                className="tm-nav-link cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowProfileMenu(!showProfileMenu);
-                }}
-              >
+            <button
+              type="button"
+              className="tm-nav-link tm-profile-link"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate && onNavigate("profile");
+              }}
+            >
                 <svg
                   width="19"
                   height="19"
@@ -283,39 +280,7 @@ export default function TradeMeHome({
                 <span className="tm-nav-text">
                   {currentUser ? currentUser.fullName?.split(" ")[0] || "Profil" : "Profil"}
                 </span>
-              </div>
-
-              {/* Profile Dropdown Menu */}
-              {showProfileMenu && (
-                <div
-                  className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-50 text-left animate-fadeIn"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="px-3 py-2 border-b border-gray-100 mb-2">
-                    <p className="text-xs text-gray-500 font-medium">Masuk sebagai</p>
-                    <p className="text-sm font-bold text-gray-900 truncate">
-                      {currentUser?.fullName || "Pengguna TradeMe"}
-                    </p>
-                    <p className="text-xs text-emerald-700 font-semibold truncate">
-                      {currentUser?.email || "user@trademe.com"}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setShowProfileMenu(false);
-                      if (onLogout) onLogout();
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    <span>Keluar (Logout)</span>
-                  </button>
-                </div>
-              )}
-            </div>
+            </button>
 
             {/* Hamburger Menu */}
             <button

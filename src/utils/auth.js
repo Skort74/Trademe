@@ -138,3 +138,40 @@ export function clearCurrentSession() {
   } catch (e) {}
 }
 
+/**
+ * Update the active user's public profile and keep the registered account in sync.
+ */
+export function updateCurrentUser(updates) {
+  const currentUser = getCurrentSession();
+  if (!currentUser) return null;
+
+  const updatedUser = {
+    ...currentUser,
+    ...updates,
+  };
+
+  setCurrentSession(updatedUser);
+
+  try {
+    const users = getRegisteredUsers();
+    const updatedUsers = users.map((user) => {
+      const sameEmail =
+        user.email &&
+        currentUser.email &&
+        user.email.toLowerCase() === currentUser.email.toLowerCase();
+      const sameUsername =
+        user.username &&
+        currentUser.username &&
+        user.username.toLowerCase() === currentUser.username.toLowerCase();
+
+      return sameEmail || sameUsername ? { ...user, ...updates } : user;
+    });
+
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(updatedUsers));
+  } catch (err) {
+    console.error("Error updating user profile:", err);
+  }
+
+  return updatedUser;
+}
+

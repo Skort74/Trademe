@@ -212,22 +212,24 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
         </div>
       </section>
 
-      {/* ================= CTA SECTION ================= */}
+      {/* CTA pendaftaran hanya untuk penerima perorangan */}
+      {activeTab === 'perorangan' && (
       <section className="bg-[#FFF9EB] py-16">
         <div className="max-w-[1280px] mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-8">
           <div>
-            <span className="text-[#B45309] font-bold text-xs tracking-widest uppercase mb-2 block">BUTUH BANTUAN BARANG?</span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-[#1F2A24] mb-2">Ajukan diri sebagai penerima donasi</h2>
-            <p className="text-[#718096] text-sm">Data akan diperiksa oleh admin sebelum ditampilkan agar bantuan tepat sasaran.</p>
+            <span className="text-[#B45309] font-bold text-xs tracking-widest uppercase mb-2 block">KENAL SESEORANG YANG MEMBUTUHKAN?</span>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#1F2A24] mb-2">Daftarkan mereka yang membutuhkan</h2>
+            <p className="text-[#718096] text-sm">Data calon penerima akan diperiksa oleh admin sebelum ditampilkan agar bantuan tepat sasaran.</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
             className="px-8 py-3.5 rounded-xl border-2 border-[#1F2A24] text-[#1F2A24] font-bold text-sm hover:bg-[#1F2A24] hover:text-white transition-all whitespace-nowrap"
 >
-            Ajukan Sebagai Penerima →
+            Daftarkan Penerima →
         </button>
         </div>
       </section>
+      )}
 
       {/* ================= FOOTER ================= */}
       <footer className="border-t border-[#E8EEEA] pt-10 pb-8 mt-12">
@@ -249,7 +251,12 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
           © {new Date().getFullYear()} TradeMe · Mendukung SDG 1: Tanpa Kemiskinan
         </div>
       </footer>
-      {showForm && <AjukanPenerima onClose={() => setShowForm(false)} / >}
+      {showForm && (
+        <AjukanPenerima
+          recipientType="perorangan"
+          onClose={() => setShowForm(false)}
+        />
+      )}
     </div>
   );
 };
