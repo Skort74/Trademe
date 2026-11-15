@@ -7,16 +7,25 @@ const STORAGE_KEY_CURRENT_USER = "treadme_current_user";
 // Default seed accounts for testing out-of-the-box
 export const DEFAULT_USERS = [
   {
+    fullName: "Admin TradeMe",
+    email: "admin@treadme.com",
+    username: "admin",
+    password: "admin123",
+    role: "admin",
+  },
+  {
     fullName: "Budi Santoso",
     email: "budi@treadme.com",
     username: "budi",
     password: "password123",
+    role: "user",
   },
   {
     fullName: "Siti Rahma",
     email: "siti@gmail.com",
     username: "siti",
     password: "password123",
+    role: "user",
   },
 ];
 
@@ -27,8 +36,19 @@ export function getRegisteredUsers() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_USERS);
     if (raw) {
-      const parsed = JSON.parse(raw);
+      let parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        // Ensure admin user exists in list even if previously cached
+        const adminIdx = parsed.findIndex(
+          (u) => u.username === "admin" || u.email === "admin@treadme.com"
+        );
+        if (adminIdx === -1) {
+          parsed.unshift(DEFAULT_USERS[0]);
+          localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(parsed));
+        } else if (parsed[adminIdx].role !== "admin") {
+          parsed[adminIdx].role = "admin";
+          localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(parsed));
+        }
         return parsed;
       }
     }
@@ -86,6 +106,30 @@ export function registerUser({ fullName, email, password }) {
     success: true,
     user: newUser,
   };
+}
+
+/**
+ * Perbarui data user (dipakai Panel Admin: ubah role / status)
+ */
+export function updateRegisteredUser(username, patch) {
+  const users = getRegisteredUsers().map((u) =>
+    u.username === username ? { ...u, ...patch } : u
+  );
+  try {
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+  } catch (e) {}
+  return users;
+}
+
+/**
+ * Hapus user dari daftar terdaftar
+ */
+export function deleteRegisteredUser(username) {
+  const users = getRegisteredUsers().filter((u) => u.username !== username);
+  try {
+    localStorage.setItem(STORAGE_KEY_USERS, JSON.stringify(users));
+  } catch (e) {}
+  return users;
 }
 
 /**

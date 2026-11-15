@@ -1,68 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import HalamanUnggahDonasi from './HalamanUnggahDonasi';
 import AjukanPenerima from "./AjukanPenerima";
+import { foundations, recipientApplications, STORE_EVENT } from './utils/adminStore';
+import { getConversationsForUser, countUnread } from './utils/chat';
+
+function initials(name) {
+  return String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+}
 
 const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
   // State untuk mengontrol tampilan (List Penerima vs Form Unggah)
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState(null);
-  
+
   // State untuk Filter (yayasan / perorangan)
   const [activeTab, setActiveTab] = useState('yayasan');
   const [showForm, setShowForm] = useState(false);
+  const recipientsRef = useRef(null);
 
-  // Data Dummy Yayasan Mitra
-  const recipientsYayasan = [
-    {
-      id: 1,
-      name: 'Yayasan Kasih Anak',
-      needs: 'Buku pelajaran, seragam sekolah, mainan edukatif',
-      location: 'Gubeng, Surabaya',
-      image: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=400&q=80'
-    },
-    {
-      id: 2,
-      name: 'Panti Asuhan Harapan',
-      needs: 'Peralatan dapur, selimut, pakaian layak pakai',
-      location: 'Wonokromo, Surabaya',
-      image: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=400&q=80'
-    },
-    {
-      id: 3,
-      name: 'Rumah Singgah Mandiri',
-      needs: 'Furnitur bekas, elektronik fungsional, bahan bangunan',
-      location: 'Rungkut, Surabaya',
-      image: 'https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=400&q=80'
-    }
-  ];
+  // Render ulang saat data yayasan / pengajuan berubah (mis. disetujui admin di tab lain)
+  const [, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  useEffect(() => {
+    window.addEventListener(STORE_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(STORE_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [refresh]);
 
-  // Data Dummy Penerima Perorangan
-  const recipientsPerorangan = [
-    {
-      id: 4,
-      name: 'Siti Aminah',
-      needs: 'Buku, meja belajar, pakaian anak',
-      location: 'Sukolilo, Surabaya',
-      image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80'
-    },
-    {
-      id: 5,
-      name: 'Pak Hasan',
-      needs: 'Peralatan rumah tangga',
-      location: 'Rungkut, Surabaya',
-      image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=400&q=80'
-    },
-    {
-      id: 6,
-      name: 'Keluarga Ibu Ratna',
-      needs: 'Furnitur dan elektronik',
-      location: 'Tegalsari, Surabaya',
-      image: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=400&q=80'
-    }
-  ];
+  // Yayasan mitra yang aktif (dikelola di Panel Admin → Yayasan)
+  const recipientsYayasan = foundations
+    .all()
+    .filter((y) => y.status === 'Aktif')
+    .map((y) => ({
+      id: y.id,
+      name: y.name,
+      needs: y.needs || y.description || 'Menerima berbagai barang layak pakai',
+      location: y.location,
+    }));
+
+  // Penerima perorangan yang sudah disetujui (Panel Admin → Verifikasi Penerima)
+  const recipientsPerorangan = recipientApplications
+    .all()
+    .filter((a) => a.tipe_penerima === 'perorangan' && a.status === 'Disetujui')
+    .map((a) => ({
+      id: a.id,
+      name: a.applicantName || 'Penerima perorangan',
+      needs: a.alasan_kebutuhan,
+      location: a.lokasi,
+    }));
 
   // Pilih data berdasarkan tab aktif
   const currentRecipients = activeTab === 'yayasan' ? recipientsYayasan : recipientsPerorangan;
+
+  // Titik merah di ikon chat hanya jika ada pesan belum dibaca
+  const hasUnreadChat =
+    !!currentUser &&
+    getConversationsForUser(currentUser).some((c) => countUnread(c, currentUser.username) > 0);
 
   // Handler saat tombol Donasikan diklik
   const handleDonateClick = (recipient) => {
@@ -106,17 +102,27 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            <button onClick={() => onNavigate && onNavigate('upload')} className="bg-[#2F7D5B] text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-[#25664a] transition-colors">
+            <button onClick={() => onNavigate && onNavigate('unggah')} className="bg-[#2F7D5B] text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-[#25664a] transition-colors">
               + Unggah Barang
             </button>
             <button onClick={() => onNavigate && onNavigate('chat')} className="relative p-2 text-[#1F2A24]">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+              {hasUnreadChat && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+              )}
             </button>
-            <button onClick={() => onNavigate && onNavigate('profile')} className="flex items-center gap-2 font-semibold text-sm">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-              Profil
-            </button>
+            {currentUser ? (
+              <div className="flex items-center gap-2 font-semibold text-sm">
+                <span className="w-8 h-8 rounded-full bg-[#E8F5E9] text-[#2F7D5B] text-xs font-bold flex items-center justify-center">
+                  {initials(currentUser.fullName || currentUser.username)}
+                </span>
+                <span className="hidden sm:inline">{currentUser.fullName || currentUser.username}</span>
+              </div>
+            ) : (
+              <button onClick={() => onNavigate && onNavigate('login')} className="font-semibold text-sm text-[#2F7D5B]">
+                Masuk
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -132,7 +138,9 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
             <p className="text-lg text-[#516057] mb-8 leading-relaxed max-w-lg">
               Salurkan barang layak pakai kepada yayasan dan penerima yang telah diverifikasi oleh tim TradeMe.
             </p>
-            <button className="bg-[#2F7D5B] text-white px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#25664a] transition-all shadow-lg shadow-[#2F7D5B]/20">
+            <button
+              onClick={() => recipientsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              className="bg-[#2F7D5B] text-white px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#25664a] transition-all shadow-lg shadow-[#2F7D5B]/20">
               Mulai Berdonasi Sekarang
             </button>
           </div>
@@ -147,7 +155,7 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
       </section>
 
       {/* ================= RECIPIENTS SECTION ================= */}
-      <section className="py-16 sm:py-24">
+      <section ref={recipientsRef} className="py-16 sm:py-24 scroll-mt-20">
         <div className="max-w-[1280px] mx-auto px-6">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
             <div>
@@ -180,11 +188,30 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
             </div>
           </div>
 
+          {currentRecipients.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-[#D5E5DC] bg-[#F8FBF9] py-14 px-6 text-center">
+              <p className="text-lg font-bold text-[#1F2A24] mb-1">
+                Belum ada {activeTab === 'yayasan' ? 'yayasan mitra' : 'penerima perorangan'} yang terverifikasi
+              </p>
+              <p className="text-sm text-[#718096] mb-5">
+                Penerima akan tampil di sini setelah diverifikasi oleh tim TradeMe.
+              </p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="px-6 py-2.5 rounded-xl border-2 border-[#1F2A24] text-[#1F2A24] font-bold text-sm hover:bg-[#1F2A24] hover:text-white transition-all"
+              >
+                Ajukan Sebagai Penerima →
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {currentRecipients.map((recipient) => (
               <div key={recipient.id} className="bg-white rounded-2xl border border-[#EAEFEA] overflow-hidden hover:shadow-xl transition-shadow group flex flex-col">
-                <div className="h-48 overflow-hidden">
-                  <img src={recipient.image} alt={recipient.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+                <div className="h-32 bg-gradient-to-br from-[#E8F5E9] to-[#D2E7DA] flex items-center justify-center">
+                  <span className="w-16 h-16 rounded-full bg-white/80 text-[#2F7D5B] text-xl font-extrabold flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
+                    {initials(recipient.name)}
+                  </span>
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-3">
@@ -240,8 +267,8 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
             <span className="text-sm text-[#718096] hidden md:inline ml-3">Memberi nilai baru pada barang lama.</span>
           </div>
           <div className="flex items-center gap-6 text-sm font-semibold text-[#516057]">
-            <button onClick={onBack} className="hover:text-[#2F7D5B]">Donasi</button>
-            <button onClick={() => onNavigate && onNavigate('profile')} className="hover:text-[#2F7D5B]">Profil</button>
+            <button onClick={onBack} className="hover:text-[#2F7D5B]">Beranda</button>
+            <button onClick={() => onNavigate && onNavigate('chat')} className="hover:text-[#2F7D5B]">Chat</button>
             <button onClick={onLogout} className="hover:text-red-600">Keluar</button>
           </div>
         </div>

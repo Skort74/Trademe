@@ -62,21 +62,40 @@ export default function HalamanLogin({
         return;
       }
 
-      // KONDISI 2: User terdaftar tetapi password salah
-      if (user.password !== password) {
+      // KONDISI 2: User terdaftar tetapi password salah (dukung admin123 atau password123 untuk admin)
+      const isPasswordValid =
+        user.password === password ||
+        (user.role === "admin" && (password === "admin123" || password === "password123"));
+
+      if (!isPasswordValid) {
         setErrorMsg("Kata sandi salah. Silakan periksa kembali kata sandi Anda.");
         return;
       }
 
-      // KONDISI 3: Username dan password cocok -> Masuk ke Homepage!
+      // Akun dinonaktifkan admin lewat Panel Admin → Pengguna
+      if (user.status === "Nonaktif") {
+        setErrorMsg("Akun Anda sedang dinonaktifkan. Silakan hubungi admin TradeMe.");
+        return;
+      }
+
+      // KONDISI 3: Username dan password cocok -> Masuk sesuai Role!
       setCurrentSession(user);
-      setSuccessMsg(`Berhasil masuk! Selamat datang, ${user.fullName || user.username}.`);
+      const isRoleAdmin = user.role === "admin";
+      setSuccessMsg(
+        isRoleAdmin
+          ? `Berhasil masuk sebagai Admin! Mengarahkan ke Panel Admin...`
+          : `Berhasil masuk! Selamat datang, ${user.fullName || user.username}.`
+      );
 
       setTimeout(() => {
         if (onLoginSuccess) {
           onLoginSuccess(user);
         } else if (onNavigate) {
-          onNavigate("home");
+          if (isRoleAdmin) {
+            onNavigate("admin");
+          } else {
+            onNavigate("home");
+          }
         }
       }, 700);
     }, 600);
@@ -346,6 +365,40 @@ export default function HalamanLogin({
             >
               Daftar gratis
             </button>
+          </div>
+
+          {/* Quick Demo Credentials Helper */}
+          <div className="w-full mt-6 p-3 rounded-2xl bg-[#F6FAF7] border border-[#DCE6DF] text-center text-xs text-[#516057]">
+            <div className="text-[11px] font-bold text-[#1F2A24] mb-2 flex items-center justify-center gap-1.5">
+              <span>⚡</span>
+              <span>Pilihan Cepat Akun Demo</span>
+            </div>
+            <div className="flex items-center justify-center gap-2 flex-wrap text-[11px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setIdentifier("budi");
+                  setPassword("password123");
+                  setErrorMsg("");
+                }}
+                className="px-2.5 py-1 rounded-lg bg-white border border-[#DCE6DF] hover:border-[#2F7D5B] text-[#1F2A24] font-medium transition-colors shadow-2xs cursor-pointer"
+                title="Login sebagai User biasa"
+              >
+                👤 User: <span className="font-bold text-[#2F7D5B]">budi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIdentifier("admin");
+                  setPassword("admin123");
+                  setErrorMsg("");
+                }}
+                className="px-2.5 py-1 rounded-lg bg-white border border-[#DCE6DF] hover:border-[#2F7D5B] text-[#1F2A24] font-medium transition-colors shadow-2xs cursor-pointer"
+                title="Login sebagai Admin"
+              >
+                🛡️ Admin: <span className="font-bold text-[#2F7D5B]">admin</span>
+              </button>
+            </div>
           </div>
         </div>
 

@@ -7,18 +7,21 @@ const ALL_PRODUCTS = [
     title: "Sepeda Kota Vintage",
     category: "Jual",
     priceText: "Rp750.000",
+    price: 750000,
     isExchange: false,
     location: "Wonokromo",
     condition: "Baik",
     image: "/images/vintage-bike.jpg",
     catType: "Kendaraan",
     priceRange: "> Rp500.000",
+    status: "Membuka Penawaran", // negotiable
   },
   {
     id: 2,
     title: "Meja Makan Kayu Jati",
     category: "Tukar",
     priceText: "Terbuka untuk ditukar",
+    price: 0,
     isExchange: true,
     location: "Rungkut",
     condition: "Sangat baik",
@@ -31,6 +34,7 @@ const ALL_PRODUCTS = [
     title: "Kursi Cafe Minimalis",
     category: "Lelang",
     priceText: "Mulai Rp280.000",
+    price: 280000,
     isExchange: false,
     location: "Sukolilo",
     condition: "Baik",
@@ -43,18 +47,21 @@ const ALL_PRODUCTS = [
     title: "Kamera Analog 35mm Vintage",
     category: "Jual",
     priceText: "Rp450.000",
+    price: 450000,
     isExchange: false,
     location: "Tegalsari",
     condition: "Baik",
     image: "/images/hero-antique.jpg",
     catType: "Elektronik",
     priceRange: "Rp250.000 - Rp500.000",
+    // tidak ada status = harga tetap (tidak negotiable)
   },
   {
     id: 5,
     title: "Gitar Akustik Klasik Yamaha",
     category: "Tukar",
     priceText: "Terbuka untuk ditukar",
+    price: 0,
     isExchange: true,
     location: "Gubeng",
     condition: "Sangat baik",
@@ -67,6 +74,7 @@ const ALL_PRODUCTS = [
     title: "Lampu Meja Art Deco Kuningan",
     category: "Lelang",
     priceText: "Mulai Rp180.000",
+    price: 180000,
     isExchange: false,
     location: "Genteng",
     condition: "Baik",
@@ -79,6 +87,7 @@ const ALL_PRODUCTS = [
     title: "Set Piring Keramik Antik (12 pcs)",
     category: "Donasi",
     priceText: "Donasi Gratis",
+    price: 0,
     isExchange: false,
     location: "Wonocolo",
     condition: "Sangat baik",
@@ -91,6 +100,7 @@ const ALL_PRODUCTS = [
     title: "Rak Buku Kayu Pinus Rustic",
     category: "Donasi",
     priceText: "Donasi Gratis",
+    price: 0,
     isExchange: false,
     location: "Sawahan",
     condition: "Baik",
@@ -292,14 +302,37 @@ export default function TradeMeHome({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="px-3 py-2 border-b border-gray-100 mb-2">
-                    <p className="text-xs text-gray-500 font-medium">Masuk sebagai</p>
-                    <p className="text-sm font-bold text-gray-900 truncate">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500 font-medium">Masuk sebagai</p>
+                      {currentUser?.role === "admin" && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#EAF5EF] text-[#2F7D5B]">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-gray-900 truncate mt-0.5">
                       {currentUser?.fullName || "Pengguna TradeMe"}
                     </p>
                     <p className="text-xs text-emerald-700 font-semibold truncate">
                       {currentUser?.email || "user@trademe.com"}
                     </p>
                   </div>
+
+                  {currentUser?.role === "admin" && (
+                    <button
+                      onClick={() => {
+                        setShowProfileMenu(false);
+                        if (onNavigate) onNavigate("admin");
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-[#2F7D5B] hover:bg-[#EAF5EF] rounded-xl transition-colors mb-1 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span>Panel Admin</span>
+                    </button>
+                  )}
 
                   <button
                     onClick={() => {

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import TradeMeHome from "./TradeMeHome";
 import HalamanDetailLelang from "./HalamanDetailLelang";
@@ -10,62 +9,43 @@ import HalamanCheckout from "./HalamanCheckout";
 import HalamanSuksesPembayaran from "./HalamanSuksesPembayaran";
 import HalamanChat from "./HalamanChat";
 import PanelAdminBarang from "./PanelAdminBarang";
-<<<<<<< Updated upstream
 import HalamanDonasi from "./HalamanDonasi"; 
-import { getCurrentSession, clearCurrentSession } from "./utils/auth";
-=======
-import HalamanDonasi from "./HalamanDonasi";
 import UnggahBarang from "./UnggahBarang";
-
-import {
-  getCurrentSession,
-  clearCurrentSession,
-} from "./utils/auth";
->>>>>>> Stashed changes
+import { getCurrentSession, clearCurrentSession } from "./utils/auth";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState(() => {
-    return window.location.pathname === "/unggah"
-      ? "unggah"
-      : "login";
+    return window.location.pathname === "/unggah" ? "unggah" : "login";
   });
 
-  const [currentUser, setCurrentUser] = useState(
-    () => getCurrentSession()
-  );
-
-  const [selectedProduct, setSelectedProduct] =
-    useState(null);
-
+  const [currentUser, setCurrentUser] = useState(() => getCurrentSession());
+  const [selectedProduct, setSelectedProduct] = useState(null);
   const [navParams, setNavParams] = useState({});
 
   // NAVIGASI HALAMAN
   const handleNavigate = (page, params = {}) => {
     setNavParams(params);
-
     if (params.product) {
       setSelectedProduct(params.product);
     }
-
     setCurrentPage(page);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // LOGIN BERHASIL
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    handleNavigate("home");
+    if (user && user.role === "admin") {
+      handleNavigate("admin");
+    } else {
+      handleNavigate("home");
+    }
   };
 
   // LOGOUT
   const handleLogout = () => {
     clearCurrentSession();
     setCurrentUser(null);
-
     handleNavigate("login", {
       initialNotice:
         "Anda telah keluar. Silakan masukkan kredensial Anda untuk masuk kembali.",
@@ -75,7 +55,6 @@ export default function App() {
   // PILIH PRODUK
   const handleSelectProduct = (product) => {
     setSelectedProduct(product);
-
     if (product && product.category === "Lelang") {
       handleNavigate("lelang_detail", { product });
     } else {
@@ -124,13 +103,8 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
-<<<<<<< Updated upstream
-      
-      {/* 4b. HALAMAN DETAIL LELANG */}
-=======
 
       {/* 5. DETAIL LELANG */}
->>>>>>> Stashed changes
       {currentPage === "lelang_detail" && (
         <HalamanDetailLelang
           product={selectedProduct || navParams.product}
@@ -197,6 +171,8 @@ export default function App() {
       {currentPage === "admin" && (
         <PanelAdminBarang
           onNavigate={handleNavigate}
+          currentUser={currentUser}
+          onLogout={handleLogout}
         />
       )}
 

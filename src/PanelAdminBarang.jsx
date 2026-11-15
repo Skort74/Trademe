@@ -1,38 +1,16 @@
 import React, { useState, useEffect } from "react";
+import AdminRingkasan from "./admin/AdminRingkasan";
+import AdminPengguna from "./admin/AdminPengguna";
+import AdminTransaksi from "./admin/AdminTransaksi";
+import AdminSengketa from "./admin/AdminSengketa";
+import AdminYayasan from "./admin/AdminYayasan";
+import AdminVerifPenerima from "./admin/AdminVerifPenerima";
+import AdminVerifLelang from "./admin/AdminVerifLelang";
+import AdminPemenang from "./admin/AdminPemenang";
+import { initials } from "./admin/AdminUI";
+import { getAdminItems, saveAdminItems, ADMIN_ITEMS_KEY, STORE_EVENT } from "./utils/adminStore";
 
-const INITIAL_ITEMS = [
-  {
-    id: 1,
-    barang: "Meja Belajar Kayu",
-    pemilik: "Nadia Rahma",
-    jenis: "Donasi",
-    kurasi: "Menunggu",
-    kondisi: "Kondisi baik",
-    image: "/ImageMejaBelajarKayu.png",
-    catatan: "Perlu cek kelengkapan baut dan kebersihan kayu.",
-  },
-  {
-    id: 2,
-    barang: "Kamera Analog",
-    pemilik: "Rian Putra",
-    jenis: "Lelang",
-    kurasi: "Ditinjau",
-    kondisi: "Fungsi normal, mulus",
-    image: "/images/hero-antique.jpg",
-    catatan: "Shutter speed dan aperture bekerja dengan baik.",
-  },
-  {
-    id: 3,
-    barang: "Sepeda Lipat",
-    pemilik: "Budi Santoso",
-    jenis: "Jual",
-    kurasi: "Dilaporkan",
-    kondisi: "Cat orisinal, siap pakai",
-    image: "/images/vintage-bike.jpg",
-    catatan: "Laporan terkait foto kurang jelas dari sudut belakang.",
-  },
-];
-
+// eslint-disable-next-line no-unused-vars -- dipakai di blok preset gambar yang sedang dinonaktifkan
 const PRESET_IMAGES = [
   { label: "Meja Kayu", url: "/ImageMejaBelajarKayu.png" },
   { label: "Kamera / Antik", url: "/images/hero-antique.jpg" },
@@ -41,8 +19,8 @@ const PRESET_IMAGES = [
   { label: "Kursi Cafe", url: "/images/kursi-cafe.jpg" },
 ];
 
-export default function PanelAdminBarang() {
-  const [activeMenu, setActiveMenu] = useState("barang");
+export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) {
+  const [activeMenu, setActiveMenu] = useState("ringkasan");
   const [selectedId, setSelectedId] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedJenis, setSelectedJenis] = useState("Semua");
@@ -50,28 +28,27 @@ export default function PanelAdminBarang() {
   const [actionNotice, setActionNotice] = useState(null);
   const [uploadFileName, setUploadFileName] = useState("");
 
-  // Load from localStorage if exists, otherwise fallback to INITIAL_ITEMS
-  const [items, setItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem("trademe_admin_items");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.error("Failed to parse items from localStorage", e);
-    }
-    return INITIAL_ITEMS;
-  });
+  // Data barang tersimpan di localStorage (lihat utils/adminStore.js)
+  const [items, setItems] = useState(() => getAdminItems());
 
-  // Save to localStorage whenever items changes
+  // Simpan setiap kali items berubah
   useEffect(() => {
-    try {
-      localStorage.setItem("trademe_admin_items", JSON.stringify(items));
-    } catch (e) {
-      console.error("Failed to save items to localStorage", e);
-    }
+    saveAdminItems(items);
   }, [items]);
+
+  // Muat ulang bila barang ditambahkan dari halaman lain (mis. unggah donasi)
+  useEffect(() => {
+    const reload = (e) => {
+      const key = e.detail?.key || e.key;
+      if (!key || key === ADMIN_ITEMS_KEY) setItems(getAdminItems());
+    };
+    window.addEventListener(STORE_EVENT, reload);
+    window.addEventListener("storage", reload);
+    return () => {
+      window.removeEventListener(STORE_EVENT, reload);
+      window.removeEventListener("storage", reload);
+    };
+  }, []);
 
   // Modal State for Create / Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -295,6 +272,39 @@ export default function PanelAdminBarang() {
     setTimeout(() => setActionNotice(null), 3500);
   };
 
+  const activeLabel = menuItems.find((m) => m.id === activeMenu)?.label || "Barang";
+
+  const goTab = (id) => {
+    setActiveMenu(id);
+    setActionNotice(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Konten tab selain "Barang"
+  const renderOtherTab = () => {
+    const common = { notify: triggerNotice, onGoTab: goTab, currentUser, items, setItems };
+    switch (activeMenu) {
+      case "ringkasan":
+        return <AdminRingkasan {...common} />;
+      case "pengguna":
+        return <AdminPengguna {...common} />;
+      case "transaksi":
+        return <AdminTransaksi {...common} />;
+      case "sengketa":
+        return <AdminSengketa {...common} />;
+      case "yayasan":
+        return <AdminYayasan {...common} />;
+      case "verif-penerima":
+        return <AdminVerifPenerima {...common} />;
+      case "verif-lelang":
+        return <AdminVerifLelang {...common} />;
+      case "tentukan-pemenang":
+        return <AdminPemenang {...common} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-[#F6FAF7] font-sans antialiased text-[#1F2A24] selection:bg-[#E5F2EB]">
       {/* ================= LEFT SIDEBAR ================= */}
@@ -326,7 +336,7 @@ export default function PanelAdminBarang() {
               return (
                 <button
                   key={menu.id}
-                  onClick={() => setActiveMenu(menu.id)}
+                  onClick={() => goTab(menu.id)}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[9px] transition-all cursor-pointer text-left ${
                     isActive
                       ? "bg-[#2F7D5B] text-white shadow-sm font-semibold"
@@ -349,13 +359,19 @@ export default function PanelAdminBarang() {
           </nav>
         </div>
 
-        {/* Back Link */}
-        <div className="pt-6 px-2.5">
+        {/* Back Link & Logout */}
+        <div className="pt-6 px-2.5 flex flex-col gap-3">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => (onNavigate ? onNavigate("home") : window.history.back())}
             className="flex items-center gap-1.5 text-[#2F7D5B] text-xs font-bold hover:underline cursor-pointer transition-colors"
           >
             <span>←</span> Kembali ke situs
+          </button>
+          <button
+            onClick={() => (onLogout ? onLogout() : onNavigate && onNavigate("login"))}
+            className="flex items-center gap-1.5 text-red-600 text-xs font-bold hover:underline cursor-pointer transition-colors text-left"
+          >
+            <span>🚪</span> Keluar (Logout)
           </button>
         </div>
       </aside>
@@ -370,18 +386,20 @@ export default function PanelAdminBarang() {
                 PUSAT KENDALI
               </p>
               <h1 className="text-[#1F2A24] text-[30px] font-bold leading-tight mt-1">
-                Barang 
+                {activeLabel}
               </h1>
             </div>
 
             {/* Admin Profile */}
             <div className="flex items-center gap-3">
               <div className="w-[43px] h-[43px] rounded-full bg-[#DCECE3] flex items-center justify-center shrink-0">
-                <span className="text-[#1F6044] text-xs font-extrabold">AD</span>
+                <span className="text-[#1F6044] text-xs font-extrabold">
+                  {initials(currentUser?.fullName || "Admin")}
+                </span>
               </div>
               <div className="flex flex-col">
                 <span className="text-[#1F2A24] text-xs font-bold leading-tight">
-                  Admin TradeMe
+                  {currentUser?.fullName || "Admin TradeMe"}
                 </span>
                 <span className="text-[#66736C] text-[10px] leading-tight mt-0.5">
                   Super Admin
@@ -416,6 +434,9 @@ export default function PanelAdminBarang() {
             </div>
           )}
 
+          {activeMenu !== "barang" && renderOtherTab()}
+
+          {activeMenu === "barang" && (<>
           {/* ================= CARD 1: DAFTAR BARANG  ================= */}
           <section className="bg-white border border-[#DCE6DF] rounded-[15px] p-5 shadow-sm">
             {/* Header with Title & Filter Bar & Tambah Barang Button */}
@@ -700,6 +721,24 @@ export default function PanelAdminBarang() {
                 <p className="text-[#66736C] text-[10px] mt-0.5 mb-3">
                   {selectedItem.jenis} · {selectedItem.pemilik} · {selectedItem.kondisi}
                 </p>
+                {(selectedItem.penerima || selectedItem.lokasi || selectedItem.deskripsi) && (
+                  <div className="mb-3 p-2.5 rounded-lg bg-[#F8FAF9] border border-[#E8EDE9] space-y-1">
+                    {selectedItem.penerima && (
+                      <p className="text-[10px] text-[#1F2A24]">
+                        <span className="text-[#66736C]">Untuk: </span>
+                        <span className="font-bold">{selectedItem.penerima}</span>
+                      </p>
+                    )}
+                    {selectedItem.lokasi && (
+                      <p className="text-[10px] text-[#1F2A24]">
+                        <span className="text-[#66736C]">Lokasi: </span>{selectedItem.lokasi}
+                      </p>
+                    )}
+                    {selectedItem.deskripsi && (
+                      <p className="text-[10px] text-[#1F2A24] whitespace-pre-wrap">{selectedItem.deskripsi}</p>
+                    )}
+                  </div>
+                )}
 
                 {/* Curate Note Field */}
                 <div>
@@ -748,6 +787,7 @@ export default function PanelAdminBarang() {
               </div>
             </section>
           )}
+          </>)}
         </div>
       </main>
 

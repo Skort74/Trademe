@@ -1,13 +1,19 @@
 import React, { useState, useRef } from 'react';
 import PopupSuksesDonasi from './PopupSuksesDonasi';
+import { getCurrentSession } from './utils/auth';
+import { addAdminItem } from './utils/adminStore';
+import { compressImage } from './utils/image';
 
 const MAX_PHOTOS = 5;
+const KONDISI_LABEL = { baru: 'Baru', bekas_baik: 'Bekas - Baik', bekas_cukup: 'Bekas - Cukup' };
 
 const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [photos, setPhotos] = useState([]); // foto barang yang dipilih
   const [penerima, setPenerima] = useState(recipientName || ''); // terisi dari kartu, boleh diubah
   const fileRef = useRef(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [formData, setFormData] = useState({
     namaBarang: '',
     kategori: '',
@@ -40,10 +46,42 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
     setPhotos(photos.filter((p) => p.id !== id));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Tampilkan popup sukses
-    setIsSuccess(true);
+    setSubmitError('');
+    if (photos.length === 0) {
+      setSubmitError('Tambahkan minimal 1 foto barang.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Simpan foto utama dalam ukuran kecil (localStorage terbatas)
+      const image = await compressImage(photos[0].file);
+      const owner = getCurrentSession();
+
+      // Masuk ke antrean kurasi Panel Admin → Barang
+      addAdminItem({
+        barang: formData.namaBarang.trim(),
+        pemilik: owner?.fullName || owner?.username || 'Tamu',
+        pemilikId: owner?.username || null,
+        jenis: 'Donasi',
+        kurasi: 'Menunggu',
+        kondisi: KONDISI_LABEL[formData.kondisi] || formData.kondisi,
+        kategori: formData.kategori,
+        deskripsi: formData.deskripsi.trim(),
+        lokasi: formData.lokasi.trim(),
+        penerima: penerima.trim(),
+        tipePenerima: recipientType || 'yayasan',
+        image,
+        catatan: '',
+      });
+      setIsSuccess(true);
+    } catch (err) {
+      setSubmitError('Gagal menyimpan donasi. Coba gunakan foto lain atau ukuran lebih kecil.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Jika sukses, tampilkan popup
@@ -302,12 +340,19 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
           </div>
 
           {/* Tombol Submit */}
-          <button 
-            type="submit" 
-            className="w-full py-4 bg-[#2F7D5B] text-white font-bold text-lg rounded-xl hover:bg-[#25664a] active:scale-[0.99] transition-all shadow-lg shadow-[#2F7D5B]/20"
+          {submitError && (
+            <p className="text-sm font-semibold text-red-600 text-center -mb-4">{submitError}</p>
+          )}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full py-4 bg-[#2F7D5B] text-white font-bold text-lg rounded-xl hover:bg-[#25664a] active:scale-[0.99] transition-all shadow-lg shadow-[#2F7D5B]/20 disabled:opacity-60 disabled:cursor-wait"
           >
-            Terbitkan Barang Donasi
+            {isSubmitting ? 'Menyimpan...' : 'Terbitkan Barang Donasi'}
           </button>
+          <p className="text-xs text-gray-500 text-center -mt-4">
+            Barang akan diperiksa admin sebelum diserahkan ke penerima.
+          </p>
 
         </form>
       </main>

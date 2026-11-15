@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Icon } from "./TradeMeLayout";
+import { getCurrentSession } from "./utils/auth";
+import { recipientApplications } from "./utils/adminStore";
 
 const inputCls =
   "w-full rounded-xl border border-trade-border bg-white px-3.5 py-3 text-sm text-trade-dark outline-none transition placeholder:text-trade-muted/70 focus:border-trade-500 focus:ring-2 focus:ring-trade-500/20";
@@ -65,7 +67,20 @@ export default function AjukanPenerima({ onClose }) {
     // TODO: kirim ke backend setelah endpoint siap, mis.
     // fetch(`${API_URL}/penerima`, { method: "POST", body: data });
     // (jangan atur header Content-Type sendiri untuk FormData)
-    console.log("Pengajuan penerima:", Array.from(data.entries()));
+    // Sementara simpan ke localStorage agar bisa diverifikasi di Panel Admin.
+    // (File dokumen belum bisa disimpan tanpa backend, jadi hanya nama filenya.)
+    const applicant = getCurrentSession();
+    recipientApplications.add({
+      tipe_penerima: form.tipe_penerima,
+      nama_lembaga: form.tipe_penerima === "yayasan" ? form.nama_lembaga.trim() : "",
+      lokasi: form.lokasi.trim(),
+      alasan_kebutuhan: form.alasan_kebutuhan.trim(),
+      dokumen: files.map((f) => f.name),
+      applicantId: applicant?.username || null,
+      applicantName: applicant?.fullName || applicant?.username || "",
+      applicantEmail: applicant?.email || "",
+      status: "Menunggu",
+    });
     setDone(true);
   };
 

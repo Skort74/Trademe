@@ -1,107 +1,141 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { auctionBids, auctionResults, STORE_EVENT } from './utils/adminStore';
+import { getSellerOf } from './utils/chat';
+
+// Kelipatan default bila barang belum punya pengaturan kelipatan dari admin
+const DEFAULT_INCREMENT = 15000;
+
+function maskName(name) {
+  const s = String(name || '?').trim();
+  if (s.length <= 2) return `${s[0] || '?'}***`;
+  return `${s[0]}***${s[s.length - 1]}`;
+}
+
+function fmtBidTime(iso) {
+  const d = new Date(iso);
+  const today = new Date();
+  const time = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === today.toDateString()) return time;
+  return `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}, ${time}`;
+}
 
 const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogout }) => {
-  // Data item lelang dengan fallback default sesuai Figma
-  const defaultImages = [
-    product?.image || "/images/kursi-cafe.jpg",
-    "/images/hero-antique.jpg",
-    "/images/meja-jati.jpg"
-  ];
+  const parsedPrice = Number(String(product?.priceText || '').replace(/\D/g, ''));
 
   const item = {
-    id: product?.id || 3,
-    title: product?.title || "Kursi Cafe Minimalis",
-    category: "Lelang",
-    startPrice: 280000,
-    currentBid: 450000,
-    bidCount: 12,
-    location: product?.location || "Sukolilo, Surabaya",
-    description: product?.description || "Satu set empat kursi cafe kayu solid. Struktur kokoh dengan bekas pemakaian ringan.",
-    seller: product?.seller || "Budi Santoso",
-    images: defaultImages
+    id: product?.id,
+    title: product?.title || 'Barang lelang',
+    category: 'Lelang',
+    startPrice: Number(product?.startPrice || product?.price) || parsedPrice || 0,
+    increment: Number(product?.increment) || DEFAULT_INCREMENT,
+    endsAt: product?.endsAt || null,
+    location: product?.location || '',
+    description: product?.description || '',
+    seller: product?.seller || getSellerOf(product).name,
+    images: (product?.images?.length ? product.images : [product?.image]).filter(Boolean),
   };
 
-  const [currentHighestBid, setCurrentHighestBid] = useState(item.currentBid);
-  const [totalBids, setTotalBids] = useState(item.bidCount);
-  const minIncrement = 15000;
-  const [bidInput, setBidInput] = useState(item.currentBid + minIncrement);
+  // ── Baca data tawaran dari penyimpanan & render ulang saat berubah ──
+  const [, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
+  useEffect(() => {
+    window.addEventListener(STORE_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    const interval = setInterval(refresh, 3000);
+    return () => {
+      window.removeEventListener(STORE_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+      clearInterval(interval);
+    };
+  }, [refresh]);
+
+  const bids = auctionBids
+    .all()
+    .filter((b) => String(b.itemId) === String(item.id))
+    .sort((a, b) => b.amount - a.amount || new Date(a.createdAt) - new Date(b.createdAt));
+  const result = auctionResults.all().find((r) => String(r.itemId) === String(item.id)) || null;
+
+  const hasBids = bids.length > 0;
+  const currentHighestBid = hasBids ? bids[0].amount : item.startPrice;
+  const totalBids = bids.length;
+  const minRequired = hasBids ? currentHighestBid + item.increment : item.startPrice;
+  const iAmTop = hasBids && currentUser && bids[0].bidderId === currentUser.username;
+  const bidHistory = [...bids]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((b) => {
+      const isMe = currentUser && b.bidderId === currentUser.username;
+      return {
+        id: b.id,
+        user: isMe ? 'Kamu' : maskName(b.bidderName),
+        initial: String(b.bidderName || '?').charAt(0).toUpperCase(),
+        amount: b.amount,
+        time: fmtBidTime(b.createdAt),
+        isMe,
+      };
+    });
+
+  // ── Countdown (hanya jika barang punya waktu berakhir) ──
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!item.endsAt) return;
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [item.endsAt]);
+  const msLeft = item.endsAt ? Math.max(0, new Date(item.endsAt).getTime() - nowMs) : null;
+  const timeLeft = {
+    days: msLeft !== null ? Math.floor(msLeft / 86400000) : 0,
+    hours: msLeft !== null ? Math.floor((msLeft % 86400000) / 3600000) : 0,
+    minutes: msLeft !== null ? Math.floor((msLeft % 3600000) / 60000) : 0,
+  };
+  const ended = !!result || msLeft === 0;
+  const iWon = result?.winnerId && currentUser && result.winnerId === currentUser.username;
+
+  const [bidInput, setBidInput] = useState('');
+  const [bidError, setBidError] = useState('');
+  const [lastBidAmount, setLastBidAmount] = useState(0);
   const [activeImage, setActiveImage] = useState(item.images[0]);
   const [showBuyNowModal, setShowBuyNowModal] = useState(false);
   const [showBidSuccessModal, setShowBidSuccessModal] = useState(false);
 
-  // Riwayat penawaran persis sesuai data Figma
-  const [bidHistory, setBidHistory] = useState([
-    { id: 1, user: "R***a", initial: "R", amount: 450000, time: "10:42", isMe: false },
-    { id: 2, user: "D***i", initial: "D", amount: 420000, time: "10:18", isMe: false },
-    { id: 3, user: "A***a", initial: "A", amount: 390000, time: "09:51", isMe: false }
-  ]);
-
-  // Countdown timer (02 Hari : 14 Jam : 38 Menit)
-  const [timeLeft, setTimeLeft] = useState({
-    days: 2,
-    hours: 14,
-    minutes: 38,
-    seconds: 0
-  });
-
-  useEffect(() => {
-    // Timer interval countdown
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev.seconds > 0) {
-          return { ...prev, seconds: prev.seconds - 1 };
-        } else if (prev.minutes > 0) {
-          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-        } else if (prev.hours > 0) {
-          return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
-        } else if (prev.days > 0) {
-          return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        }
-        return prev;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    // Sinkronisasi input minimal penawaran jika tawaran tertinggi berubah
-    setBidInput(currentHighestBid + minIncrement);
-  }, [currentHighestBid]);
-
   // Handle pengajuan penawaran baru
   const handleAjukanPenawaran = (e) => {
     e.preventDefault();
-    const inputVal = Number(bidInput);
-    const minRequired = currentHighestBid + minIncrement;
+    setBidError('');
 
-    if (isNaN(inputVal) || inputVal < minRequired) {
-      alert(`Penawaran minimal adalah Rp${minRequired.toLocaleString('id-ID')}`);
+    if (ended) {
+      setBidError('Lelang ini sudah berakhir.');
+      return;
+    }
+    if (!currentUser) {
+      setBidError('Silakan masuk terlebih dahulu untuk mengajukan penawaran.');
+      return;
+    }
+    const inputVal = Number(String(bidInput).replace(/\D/g, ''));
+    if (!inputVal || inputVal < minRequired) {
+      setBidError(`Penawaran minimal adalah ${formatRupiah(minRequired)}.`);
       return;
     }
 
-    const now = new Date();
-    const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-    const newBid = {
-      id: Date.now(),
-      user: currentUser?.name ? `${currentUser.name.slice(0, 1)}***${currentUser.name.slice(-1)}` : "A***a",
-      initial: currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "A",
+    // Catat penawaran agar muncul di Panel Admin → Tentukan Pemenang
+    auctionBids.add({
+      itemId: item.id,
+      itemTitle: item.title,
+      itemImage: item.images[0] || '',
+      sellerName: item.seller,
+      bidderId: currentUser.username,
+      bidderName: currentUser.fullName || currentUser.username,
       amount: inputVal,
-      time: timeString,
-      isMe: true
-    };
+    });
 
-    setBidHistory([newBid, ...bidHistory]);
-    setCurrentHighestBid(inputVal);
-    setTotalBids(prev => prev + 1);
+    setLastBidAmount(inputVal);
+    setBidInput('');
     setShowBidSuccessModal(true);
   };
 
   // Format currency rupiah
-  const formatRupiah = (val) => {
-    return `Rp${Number(val).toLocaleString('id-ID')}`;
-  };
+  function formatRupiah(val) {
+    return `Rp${Number(val || 0).toLocaleString('id-ID')}`;
+  }
 
   // Navigasi "Ambil Harga Saat Ini" menuju proses Checkout Escrow
   const handleProceedBuyNow = () => {
@@ -109,7 +143,9 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
     if (onNavigate) {
       onNavigate("checkout", {
         product: {
+          ...product,
           ...item,
+          image: item.images[0],
           priceText: formatRupiah(currentHighestBid),
           price: currentHighestBid,
           isInstantAuctionBuy: true
@@ -117,6 +153,20 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
       });
     }
   };
+
+  if (!product) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center font-sans">
+        <p className="text-lg font-bold text-[#1F2A24]">Barang lelang tidak ditemukan.</p>
+        <button
+          onClick={onBack || (() => onNavigate && onNavigate("home"))}
+          className="px-5 py-2.5 rounded-xl bg-[#2F7D5B] text-white font-bold text-sm"
+        >
+          Kembali ke Beranda
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] font-sans text-[#1F2A24] antialiased">
@@ -167,7 +217,7 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
             </button>
 
             <button
-              onClick={() => onNavigate && onNavigate("chat", { product: item })}
+              onClick={() => onNavigate && onNavigate("chat", { product: { ...product, category: "Lelang" } })}
               className="relative p-2.5 rounded-full hover:bg-gray-100 text-gray-700 transition-colors flex items-center gap-1.5"
               title="Pesan Masuk"
             >
@@ -182,10 +232,10 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
 
             <div className="flex items-center gap-2 pl-2 border-l border-gray-200">
               <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xs">
-                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : "P"}
+                {currentUser?.fullName ? currentUser.fullName.charAt(0).toUpperCase() : "P"}
               </div>
               <span className="hidden sm:inline text-sm font-medium text-gray-800">
-                {currentUser?.name || "Profil"}
+                {currentUser?.fullName || "Profil"}
               </span>
             </div>
           </div>
@@ -222,8 +272,8 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
               />
             </div>
 
-            {/* 3 Thumbnail Foto */}
-            <div className="flex gap-3">
+            {/* Thumbnail Foto (hanya jika lebih dari satu foto) */}
+            {item.images.length > 1 && <div className="flex gap-3">
               {item.images.map((img, idx) => (
                 <button
                   key={idx}
@@ -237,11 +287,15 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
                   <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
-            </div>
+            </div>}
 
-            {/* Deskripsi Barang Sesuai Figma */}
-            <div className="pt-2 text-[#4A5568] text-sm sm:text-base leading-relaxed">
-              <p>{item.description}</p>
+            {/* Deskripsi Barang */}
+            <div className="pt-2 text-[#4A5568] text-sm sm:text-base leading-relaxed space-y-1">
+              {item.description && <p>{item.description}</p>}
+              <p className="text-sm text-gray-500">
+                Penjual: <span className="font-semibold text-gray-700">{item.seller}</span>
+                {item.location && <> · {item.location}</>}
+              </p>
             </div>
           </div>
 
@@ -253,108 +307,143 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
               {item.title}
             </h1>
 
-            {/* CARD 1: TAWARAN TERTINGGI SAAT INI (KUNING / KREM FIGMA) */}
+            {/* CARD 1: TAWARAN TERTINGGI SAAT INI */}
             <div className="bg-[#FEF9EE] border border-[#FDE68A] rounded-[22px] p-6 sm:p-7 shadow-sm">
               <p className="text-xs sm:text-sm font-medium text-[#854D0E] mb-1">
-                Tawaran tertinggi saat ini
+                {hasBids ? (ended ? "Tawaran tertinggi akhir" : "Tawaran tertinggi saat ini") : "Harga awal"}
               </p>
-              
+
               <div className="text-3xl sm:text-[38px] font-black text-[#713F12] tracking-tight mb-1">
                 {formatRupiah(currentHighestBid)}
               </div>
-              
+
               <p className="text-xs sm:text-sm text-[#854D0E] opacity-90 mb-6">
-                Harga awal {formatRupiah(item.startPrice)} · {totalBids} penawaran
+                Harga awal {formatRupiah(item.startPrice)} · {totalBids > 0 ? `${totalBids} penawaran` : "belum ada penawaran"}
+                {iAmTop && !ended && <span className="font-bold"> · Kamu penawar tertinggi</span>}
               </p>
 
-              {/* Countdown Timer (Hari : Jam : Menit) */}
-              <div className="flex items-center justify-center gap-3">
-                {/* Box Hari */}
-                <div className="bg-white rounded-xl px-5 py-3 text-center min-w-[72px] shadow-xs border border-[#FEF08A]">
-                  <div className="text-xl sm:text-2xl font-bold text-[#1F2937]">
-                    {String(timeLeft.days).padStart(2, '0')}
-                  </div>
-                  <div className="text-[11px] text-gray-500 font-medium mt-0.5">Hari</div>
+              {result ? (
+                <div className="bg-white rounded-xl px-4 py-3 text-center border border-[#FEF08A]">
+                  {result.status === "Pemenang Ditetapkan" ? (
+                    <>
+                      <p className="text-sm font-bold text-[#1F2937]">
+                        {iWon ? "🎉 Selamat, kamu memenangkan lelang ini!" : "Lelang telah berakhir"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Pemenang: {iWon ? "Kamu" : maskName(result.winnerName)} · {formatRupiah(result.amount)}
+                      </p>
+                      {iWon && (
+                        <p className="text-xs text-[#2F7D5B] font-semibold mt-1">
+                          Silakan hubungi penjual untuk menyelesaikan pembayaran.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm font-bold text-[#1F2937]">Lelang ditutup tanpa pemenang</p>
+                  )}
                 </div>
-
-                <div className="text-xl font-bold text-[#854D0E]">:</div>
-
-                {/* Box Jam */}
-                <div className="bg-white rounded-xl px-5 py-3 text-center min-w-[72px] shadow-xs border border-[#FEF08A]">
-                  <div className="text-xl sm:text-2xl font-bold text-[#1F2937]">
-                    {String(timeLeft.hours).padStart(2, '0')}
+              ) : item.endsAt ? (
+                ended ? (
+                  <div className="bg-white rounded-xl px-4 py-3 text-center border border-[#FEF08A]">
+                    <p className="text-sm font-bold text-[#1F2937]">Waktu lelang telah habis</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Menunggu admin menetapkan pemenang.</p>
                   </div>
-                  <div className="text-[11px] text-gray-500 font-medium mt-0.5">Jam</div>
-                </div>
-
-                <div className="text-xl font-bold text-[#854D0E]">:</div>
-
-                {/* Box Menit */}
-                <div className="bg-white rounded-xl px-5 py-3 text-center min-w-[72px] shadow-xs border border-[#FEF08A]">
-                  <div className="text-xl sm:text-2xl font-bold text-[#1F2937]">
-                    {String(timeLeft.minutes).padStart(2, '0')}
+                ) : (
+                  <div className="flex items-center justify-center gap-3">
+                    {[
+                      [timeLeft.days, "Hari"],
+                      [timeLeft.hours, "Jam"],
+                      [timeLeft.minutes, "Menit"],
+                    ].map(([val, label], idx) => (
+                      <React.Fragment key={label}>
+                        {idx > 0 && <div className="text-xl font-bold text-[#854D0E]">:</div>}
+                        <div className="bg-white rounded-xl px-5 py-3 text-center min-w-[72px] shadow-xs border border-[#FEF08A]">
+                          <div className="text-xl sm:text-2xl font-bold text-[#1F2937]">{String(val).padStart(2, '0')}</div>
+                          <div className="text-[11px] text-gray-500 font-medium mt-0.5">{label}</div>
+                        </div>
+                      </React.Fragment>
+                    ))}
                   </div>
-                  <div className="text-[11px] text-gray-500 font-medium mt-0.5">Menit</div>
+                )
+              ) : (
+                <div className="bg-white rounded-xl px-4 py-3 text-center border border-[#FEF08A]">
+                  <p className="text-sm font-semibold text-[#1F2937]">Lelang sedang berlangsung</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Pemenang ditetapkan oleh admin TradeMe.</p>
                 </div>
+              )}
+            </div>
+
+            {/* CARD 2: FORM AJUKAN PENAWARAN */}
+            {!ended && (
+              <div className="bg-white rounded-[22px] border border-gray-200 p-6 sm:p-7 shadow-xs">
+                <h3 className="font-bold text-base text-[#111827] mb-3">
+                  Ajukan penawaran
+                </h3>
+
+                <form onSubmit={handleAjukanPenawaran} className="space-y-2">
+                  <div className="relative flex items-center border border-gray-200 rounded-xl px-4 py-3 bg-white focus-within:border-[#F1B33B] focus-within:ring-2 focus-within:ring-[#FDE68A] transition-all">
+                    <span className="text-sm font-semibold text-gray-600 mr-2 select-none">
+                      Rp
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={bidInput}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '');
+                        setBidInput(raw ? Number(raw).toLocaleString('id-ID') : '');
+                        setBidError('');
+                      }}
+                      className="w-full font-bold text-base text-[#1F2937] outline-none bg-transparent"
+                      placeholder={Number(minRequired).toLocaleString('id-ID')}
+                    />
+                  </div>
+
+                  {bidError ? (
+                    <p className="text-xs text-red-600 font-semibold pl-1 pb-2">{bidError}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400 pl-1 pb-2">
+                      Minimal penawaran {formatRupiah(minRequired)}
+                      {hasBids && ` (kelipatan ${formatRupiah(item.increment)})`}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 bg-[#F1B33B] hover:bg-[#E5A42A] active:scale-[0.99] text-[#1F2A24] font-bold text-sm sm:text-base rounded-xl transition-all shadow-xs"
+                  >
+                    {currentUser ? "Ajukan Penawaran" : "Masuk untuk Menawar"}
+                  </button>
+                </form>
               </div>
-            </div>
+            )}
 
-            {/* CARD 2: FORM AJUKAN PENAWARAN (CARD PUTIH) */}
-            <div className="bg-white rounded-[22px] border border-gray-200 p-6 sm:p-7 shadow-xs">
-              <h3 className="font-bold text-base text-[#111827] mb-3">
-                Ajukan penawaran
-              </h3>
-
-              <form onSubmit={handleAjukanPenawaran} className="space-y-2">
-                <div className="relative flex items-center border border-gray-200 rounded-xl px-4 py-3 bg-white focus-within:border-[#F1B33B] focus-within:ring-2 focus-within:ring-[#FDE68A] transition-all">
-                  <span className="text-sm font-semibold text-gray-600 mr-2 select-none">
-                    Rp
-                  </span>
-                  <input
-                    type="number"
-                    value={bidInput}
-                    onChange={(e) => setBidInput(e.target.value)}
-                    className="w-full font-bold text-base text-[#1F2937] outline-none bg-transparent"
-                    placeholder="465000"
-                  />
-                </div>
-
-                <p className="text-xs text-gray-400 pl-1 pb-2">
-                  Minimal penawaran {formatRupiah(currentHighestBid + minIncrement)}
-                </p>
-
-                <button
-                  type="submit"
-                  className="w-full py-3.5 bg-[#F1B33B] hover:bg-[#E5A42A] active:scale-[0.99] text-[#1F2A24] font-bold text-sm sm:text-base rounded-xl transition-all shadow-xs"
-                >
-                  Ajukan Penawaran
-                </button>
-              </form>
-            </div>
-
-            {/* CARD 3: RIWAYAT PENAWARAN (CARD PUTIH) */}
+            {/* CARD 3: RIWAYAT PENAWARAN */}
             <div className="bg-white rounded-[22px] border border-gray-200 p-6 sm:p-7 shadow-xs">
               <h3 className="font-bold text-base text-[#111827] mb-4">
                 Riwayat penawaran
               </h3>
 
+              {bidHistory.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  Belum ada penawaran. Jadilah penawar pertama!
+                </p>
+              )}
+
               <div className="space-y-4 max-h-[220px] overflow-y-auto pr-1">
                 {bidHistory.map((bid) => (
-                  <div 
-                    key={bid.id} 
+                  <div
+                    key={bid.id}
                     className="flex items-center justify-between py-2 border-b border-gray-50 last:border-b-0"
                   >
-                    {/* User Inisial & Nama */}
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#E8F5E9] text-[#2F7D5B] font-bold text-xs flex items-center justify-center">
+                      <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center ${bid.isMe ? "bg-[#2F7D5B] text-white" : "bg-[#E8F5E9] text-[#2F7D5B]"}`}>
                         {bid.initial}
                       </div>
-                      <span className="text-sm font-medium text-gray-800">
+                      <span className={`text-sm text-gray-800 ${bid.isMe ? "font-bold" : "font-medium"}`}>
                         {bid.user}
                       </span>
                     </div>
-
-                    {/* Nominal & Waktu */}
                     <div className="text-right">
                       <div className="text-sm font-bold text-gray-900">
                         {formatRupiah(bid.amount)}
@@ -368,24 +457,25 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
               </div>
             </div>
 
-            {/* ================= FITUR BARU: AMBIL HARGA SAAT INI & CHAT PENJUAL ================= */}
+            {/* AMBIL HARGA SAAT INI & CHAT PENJUAL */}
             <div className="pt-2 space-y-3">
-              {/* Tombol Ambil Harga Saat Ini (Fitur Baru) */}
-              <button
-                type="button"
-                onClick={() => setShowBuyNowModal(true)}
-                className="w-full py-3.5 px-6 rounded-xl bg-[#2F7D5B] hover:bg-[#25684B] active:scale-[0.99] text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-sm transition-all"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <span>Ambil Harga Saat Ini ({formatRupiah(currentHighestBid)})</span>
-              </button>
+              {!ended && (
+                <button
+                  type="button"
+                  onClick={() => setShowBuyNowModal(true)}
+                  className="w-full py-3.5 px-6 rounded-xl bg-[#2F7D5B] hover:bg-[#25684B] active:scale-[0.99] text-white font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-sm transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>Ambil Harga Saat Ini ({formatRupiah(currentHighestBid)})</span>
+                </button>
+              )}
 
               {/* Tombol Chat Penjual Sesuai Figma */}
               <button
                 type="button"
-                onClick={() => onNavigate && onNavigate("chat", { product: item })}
+                onClick={() => onNavigate && onNavigate("chat", { product: { ...product, category: "Lelang" } })}
                 className="w-full py-3.5 px-6 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 active:scale-[0.99] text-gray-700 font-bold text-sm sm:text-base flex items-center justify-center gap-2 transition-all"
               >
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,7 +552,7 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
               Penawaran Berhasil Diajukan!
             </h4>
             <p className="text-sm text-gray-500 mb-5">
-              Anda kini menjadi penawar tertinggi dengan nilai <strong>{formatRupiah(currentHighestBid)}</strong>.
+              Anda kini menjadi penawar tertinggi dengan nilai <strong>{formatRupiah(lastBidAmount)}</strong>.
             </p>
             <button
               onClick={() => setShowBidSuccessModal(false)}

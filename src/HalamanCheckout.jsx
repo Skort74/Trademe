@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { getCurrentSession } from "./utils/auth";
+import { getSellerOf } from "./utils/chat";
+import { transactions } from "./utils/adminStore";
 
 export default function HalamanCheckout({ product, onBack, onNavigate, onLogout }) {
   const item = product || {
@@ -15,14 +18,38 @@ export default function HalamanCheckout({ product, onBack, onNavigate, onLogout 
   const [paymentMethod, setPaymentMethod] = useState("Transfer Bank BCA");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Compute pricing
-  const rawPrice = 750000;
+  // Compute pricing (pakai harga barang / harga deal, bukan angka tetap)
+  const rawPrice =
+    Number(item.dealPrice || item.price) ||
+    Number(String(item.priceText || "").replace(/\D/g, "")) ||
+    0;
   const serviceFee = 5000;
   const totalPrice = rawPrice + serviceFee;
 
   const handlePayNow = (e) => {
     e.preventDefault();
     setIsProcessing(true);
+
+    // Catat transaksi agar muncul di Panel Admin → Transaksi
+    const buyer = getCurrentSession();
+    transactions.add({
+      itemId: item.id ?? null,
+      itemTitle: item.title,
+      itemImage: item.image || item.images?.[0] || "",
+      category: item.category,
+      buyerId: buyer?.username || "tamu",
+      buyerName: buyer?.fullName || buyer?.username || "Tamu",
+      sellerName: item.seller || getSellerOf(item).name,
+      amount: rawPrice,
+      serviceFee,
+      total: totalPrice,
+      paymentMethod,
+      deliveryMethod,
+      meetingTime: meetingTime || null,
+      notes: notes.trim(),
+      status: "Dibayar",
+      source: item.isInstantAuctionBuy ? "Beli langsung lelang" : item.dealPrice ? "Harga hasil negosiasi" : "Checkout",
+    });
 
     setTimeout(() => {
       setIsProcessing(false);
