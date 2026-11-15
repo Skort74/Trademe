@@ -9,10 +9,10 @@ import HalamanCheckout from "./HalamanCheckout";
 import HalamanSuksesPembayaran from "./HalamanSuksesPembayaran";
 import HalamanChat from "./HalamanChat";
 import PanelAdminBarang from "./PanelAdminBarang";
-<<<<<<< Updated upstream
+
 import HalamanDonasi from "./HalamanDonasi"; 
 import { getCurrentSession, clearCurrentSession } from "./utils/auth";
-=======
+
 import HalamanDonasi from "./HalamanDonasi";
 import UnggahBarang from "./UnggahBarang";
 
@@ -20,7 +20,7 @@ import {
   getCurrentSession,
   clearCurrentSession,
 } from "./utils/auth";
->>>>>>> Stashed changes
+
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState(() => {
@@ -120,10 +120,8 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
-<<<<<<< Updated upstream
       
       {/* 4b. HALAMAN DETAIL LELANG */}
-=======
 
       {/* 5. DETAIL LELANG */}
       {currentPage === "lelang_detail" && (
