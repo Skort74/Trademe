@@ -9,9 +9,18 @@ import HalamanCheckout from "./HalamanCheckout";
 import HalamanSuksesPembayaran from "./HalamanSuksesPembayaran";
 import HalamanChat from "./HalamanChat";
 import PanelAdminBarang from "./PanelAdminBarang";
+<<<<<<< Updated upstream
 import HalamanDonasi from "./HalamanDonasi"; 
-import UnggahBarang from "./UnggahBarang";
 import { getCurrentSession, clearCurrentSession } from "./utils/auth";
+=======
+import HalamanDonasi from "./HalamanDonasi";
+import UnggahBarang from "./UnggahBarang";
+
+import {
+  getCurrentSession,
+  clearCurrentSession,
+} from "./utils/auth";
+>>>>>>> Stashed changes
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState(() => {
@@ -50,6 +59,14 @@ export default function App() {
       initialNotice:
         "Anda telah keluar. Silakan masukkan kredensial Anda untuk masuk kembali.",
     });
+  };
+
+  const handleUpdateProfile = (profile) => {
+    const updatedUser = updateCurrentUser(profile);
+
+    if (updatedUser) {
+      setCurrentUser(updatedUser);
+    }
   };
 
   // PILIH PRODUK
@@ -103,6 +120,10 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
+<<<<<<< Updated upstream
+      
+      {/* 4b. HALAMAN DETAIL LELANG */}
+=======
 
       {/* 5. DETAIL LELANG */}
       {currentPage === "lelang_detail" && (
@@ -191,6 +212,16 @@ export default function App() {
         <UnggahBarang
           onNavigate={handleNavigate}
           currentUser={currentUser}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* 13. HALAMAN PROFIL */}
+      {currentPage === "profile" && (
+        <HalamanProfil
+          onNavigate={handleNavigate}
+          currentUser={currentUser}
+          onUpdateProfile={handleUpdateProfile}
           onLogout={handleLogout}
         />
       )}
