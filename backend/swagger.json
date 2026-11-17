@@ -1169,7 +1169,113 @@
                     }
                 }
             }
+        },
+    "/api/auth/google": {
+        "post": {
+            "tags": ["02 - Authentication"],
+            "summary": "Login atau Register menggunakan akun Google",
+            "parameters": [
+                {
+                    "in": "body",
+                    "name": "body",
+                    "required": true,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "token": { "type": "string" }
+                        },
+                        "required": ["token"]
+                    }
+                }
+            ],
+            "responses": {
+                "200": {
+                    "description": "Berhasil",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": { "type": "string" },
+                                    "access_token": { "type": "string" },
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "id": { "type": "integer" },
+                                            "nama": { "type": "string" },
+                                            "email": { "type": "string" },
+                                            "role": { "type": "string" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+    },
+    "/api/admin/dashboard-summary": {
+        "get": {
+            "tags": ["06 - Transaksi"],
+            "summary": "Ringkasan statistik dashboard untuk Admin",
+            "security": [{ "Bearer": [] }],
+            "responses": {
+                "200": {
+                    "description": "Berhasil",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": { "type": "string" },
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "total_users": { "type": "integer" },
+                                            "total_transaksi": { "type": "integer" },
+                                            "pending_verifikasi": { "type": "integer" },
+                                            "total_donasi": { "type": "integer" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "/api/config/pembayaran": {
+        "get": {
+            "tags": ["07 - Donasi"],
+            "summary": "Mendapatkan konfigurasi metode pembayaran (QRIS/Transfer)",
+            "responses": {
+                "200": {
+                    "description": "Berhasil",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status": { "type": "string" },
+                                    "data": {
+                                        "type": "object",
+                                        "properties": {
+                                            "nama_bank": { "type": "string" },
+                                            "no_rekening": { "type": "string" },
+                                            "atas_nama": { "type": "string" },
+                                            "qris_image_url": { "type": "string" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     },
     "securityDefinitions": {
         "Bearer": {

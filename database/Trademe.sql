@@ -387,6 +387,8 @@ CREATE TABLE `user` (
   `role` enum('pengguna','admin') NOT NULL DEFAULT 'pengguna',
   `foto_profil` varchar(255) DEFAULT NULL,
   `tanggal_daftar` datetime DEFAULT CURRENT_TIMESTAMP,
+  `google_id` VARCHAR(255) NULL UNIQUE COMMENT 'ID unik dari Google OAuth',
+  `provider` ENUM('local', 'google') DEFAULT 'local' COMMENT 'Sumber registrasi akun',
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -412,3 +414,19 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-10-17 10:45:00
+
+-- Table for payment configuration
+CREATE TABLE IF NOT EXISTS config_pembayaran (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nama_bank VARCHAR(100) NOT NULL,
+    no_rekening VARCHAR(50) NOT NULL,
+    atas_nama VARCHAR(100) NOT NULL,
+    qris_image_url VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Insert dummy data for initial config
+INSERT INTO config_pembayaran (nama_bank, no_rekening, atas_nama, qris_image_url)
+VALUES ('BCA', '1234567890', 'TradeMe Official', 'https://via.placeholder.com/300x300.png?text=QRIS+Dummy')
+ON DUPLICATE KEY UPDATE nama_bank=nama_bank;

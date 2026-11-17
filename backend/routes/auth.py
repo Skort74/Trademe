@@ -5,6 +5,7 @@ import uuid
 import jwt
 from flask import Blueprint, jsonify, request, g
 from routes.auth_utils import token_required
+import requests
 from werkzeug.security import (
     check_password_hash,
     generate_password_hash,
@@ -600,3 +601,8 @@ def reset_password():
             cursor.close()
         if connection and connection.is_connected():
             connection.close()
+
+# ---------------------------------------------------------------------------
+# Added imports for Google Auth
+# ---------------------------------------------------------------------------
+import requests
