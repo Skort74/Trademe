@@ -10,15 +10,13 @@ import HalamanSuksesPembayaran from "./HalamanSuksesPembayaran";
 import HalamanChat from "./HalamanChat";
 import PanelAdminBarang from "./PanelAdminBarang";
 
-import HalamanDonasi from "./HalamanDonasi"; 
-import { getCurrentSession, clearCurrentSession } from "./utils/auth";
-
 import HalamanDonasi from "./HalamanDonasi";
 import UnggahBarang from "./UnggahBarang";
-
+import HalamanProfil from "./HalamanProfil";
 import {
   getCurrentSession,
   clearCurrentSession,
+  updateCurrentUser,
 } from "./utils/auth";
 
 

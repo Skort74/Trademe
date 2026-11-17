@@ -113,6 +113,7 @@ const ALL_PRODUCTS = [
 export default function TradeMeHome({
   onNavigate,
   currentUser,
+  onLogout,
   onSelectProduct,
 }) {
   const [activeTab, setActiveTab] = useState("Semua");
@@ -124,6 +125,7 @@ export default function TradeMeHome({
   const [currentCity, setCurrentCity] = useState("Surabaya");
   const [favorites, setFavorites] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const toggleFavorite = (id) => {
     setFavorites((prev) => ({
@@ -266,14 +268,15 @@ export default function TradeMeHome({
             </div>
 
             {/* Profil */}
-            <button
-              type="button"
-              className="tm-nav-link tm-profile-link"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigate && onNavigate("profile");
-              }}
-            >
+            <div className="relative">
+              <button
+                type="button"
+                className="tm-nav-link tm-profile-link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowProfileMenu((prev) => !prev);
+                }}
+              >
                 <svg
                   width="19"
                   height="19"
@@ -290,7 +293,7 @@ export default function TradeMeHome({
                 <span className="tm-nav-text">
                   {currentUser ? currentUser.fullName?.split(" ")[0] || "Profil" : "Profil"}
                 </span>
-              </div>
+              </button>
 
               {/* Profile Dropdown Menu */}
               {showProfileMenu && (
@@ -307,6 +310,19 @@ export default function TradeMeHome({
                       {currentUser?.email || "user@trademe.com"}
                     </p>
                   </div>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      if (onNavigate) onNavigate("profile");
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 rounded-xl transition-colors mb-1"
+                  >
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    <span>Halaman Profil</span>
+                  </button>
 
                   <button
                     onClick={() => {
