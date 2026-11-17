@@ -61,7 +61,9 @@ CREATE TABLE `barang` (
   `foto_barang` varchar(255) DEFAULT NULL,
   `tipe_transaksi` enum('jual','tukar','donasi','lelang') NOT NULL,
   `status_barang` enum('pending','tersedia','terjual','didonasikan','dilelang') NOT NULL DEFAULT 'pending',
-  `status_verifikasi` enum('pending','disetujui','ditolak') NOT NULL DEFAULT 'pending',
+  `ketentuan_tukar` TEXT NULL,
+  `izinkan_tambah_uang` TINYINT(1) DEFAULT 0,
+
   PRIMARY KEY (`barang_id`),
   KEY `fk_barang_user` (`pemilik_id`),
   KEY `fk_barang_kategori` (`kategori_id`),
@@ -123,7 +125,9 @@ CREATE TABLE `donasi` (
   `donor_id` int NOT NULL,
   `penerima_id` int DEFAULT NULL,
   `pengajuan_id` int DEFAULT NULL,
-  `status_verifikasi` enum('pending','disetujui','ditolak') NOT NULL DEFAULT 'pending',
+  `ketentuan_tukar` TEXT NULL,
+  `izinkan_tambah_uang` TINYINT(1) DEFAULT 0,
+
   `status_donasi` enum('tersedia','diproses','disalurkan','selesai') NOT NULL DEFAULT 'tersedia',
   PRIMARY KEY (`donasi_id`),
   KEY `fk_donasi_barang` (`barang_id`),
@@ -313,7 +317,9 @@ CREATE TABLE `pengajuan_donasi` (
   `user_id` int NOT NULL,
   `dokumen_pendukung` varchar(255) DEFAULT NULL,
   `alasan_kebutuhan` text,
-  `status_verifikasi` enum('pending','disetujui','ditolak') NOT NULL DEFAULT 'pending',
+  `ketentuan_tukar` TEXT NULL,
+  `izinkan_tambah_uang` TINYINT(1) DEFAULT 0,
+
   PRIMARY KEY (`pengajuan_id`),
   KEY `fk_pengajuan_user` (`user_id`),
   CONSTRAINT `fk_pengajuan_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`)
