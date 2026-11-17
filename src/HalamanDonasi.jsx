@@ -39,6 +39,7 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
       name: y.name,
       needs: y.needs || y.description || 'Menerima berbagai barang layak pakai',
       location: y.location,
+      image: y.image,
     }));
 
   // Penerima perorangan yang sudah disetujui (Panel Admin → Verifikasi Penerima)
@@ -47,9 +48,10 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
     .filter((a) => a.tipe_penerima === 'perorangan' && a.status === 'Disetujui')
     .map((a) => ({
       id: a.id,
-      name: a.applicantName || 'Penerima perorangan',
+      name: a.nama_penerima || a.applicantName || 'Penerima perorangan',
       needs: a.alasan_kebutuhan,
       location: a.lokasi,
+      image: a.image,
     }));
 
   // Pilih data berdasarkan tab aktif
@@ -74,6 +76,7 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
           setShowUploadForm(false);
           setSelectedRecipient(null);
         }}
+        onNavigate={onNavigate}
         recipientName={selectedRecipient.name}
         recipientType={activeTab} // Kirim tipe 'yayasan' atau 'perorangan'
       />
@@ -208,10 +211,18 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {currentRecipients.map((recipient) => (
               <div key={recipient.id} className="bg-white rounded-2xl border border-[#EAEFEA] overflow-hidden hover:shadow-xl transition-shadow group flex flex-col">
-                <div className="h-32 bg-gradient-to-br from-[#E8F5E9] to-[#D2E7DA] flex items-center justify-center">
+                <div className="relative h-48 overflow-hidden bg-gradient-to-br from-[#E8F5E9] to-[#D2E7DA] flex items-center justify-center">
                   <span className="w-16 h-16 rounded-full bg-white/80 text-[#2F7D5B] text-xl font-extrabold flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
                     {initials(recipient.name)}
                   </span>
+                  {recipient.image && (
+                    <img
+                      src={recipient.image}
+                      alt={recipient.name}
+                      onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  )}
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-3">

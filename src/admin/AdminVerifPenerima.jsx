@@ -6,7 +6,8 @@ import {
 } from "./AdminUI";
 
 const tipeLabel = (t) => (t === "yayasan" ? "Yayasan" : "Perorangan");
-const appName = (a) => (a.tipe_penerima === "yayasan" ? a.nama_lembaga : a.applicantName) || "Tanpa nama";
+const appName = (a) =>
+  (a.tipe_penerima === "yayasan" ? a.nama_lembaga : a.nama_penerima || a.applicantName) || "Tanpa nama";
 
 export default function AdminVerifPenerima({ notify }) {
   const [list] = useStoreData(recipientApplications.all);

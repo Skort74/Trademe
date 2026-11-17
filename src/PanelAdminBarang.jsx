@@ -2,11 +2,8 @@ import React, { useState, useEffect } from "react";
 import AdminRingkasan from "./admin/AdminRingkasan";
 import AdminPengguna from "./admin/AdminPengguna";
 import AdminTransaksi from "./admin/AdminTransaksi";
-import AdminSengketa from "./admin/AdminSengketa";
 import AdminYayasan from "./admin/AdminYayasan";
 import AdminVerifPenerima from "./admin/AdminVerifPenerima";
-import AdminVerifLelang from "./admin/AdminVerifLelang";
-import AdminPemenang from "./admin/AdminPemenang";
 import { initials } from "./admin/AdminUI";
 import { getAdminItems, saveAdminItems, ADMIN_ITEMS_KEY, STORE_EVENT } from "./utils/adminStore";
 
@@ -66,6 +63,7 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
 
   // Delete Confirmation Modal State
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Selected item reference
   const selectedItem =
@@ -84,11 +82,8 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
     { id: "pengguna", label: "Pengguna", icon: "P" },
     { id: "barang", label: "Barang", icon: "B" },
     { id: "transaksi", label: "Transaksi", icon: "T" },
-    { id: "sengketa", label: "Sengketa", icon: "S" },
     { id: "yayasan", label: "Yayasan", icon: "Y" },
     { id: "verif-penerima", label: "Verifikasi Penerima", icon: "V" },
-    { id: "verif-lelang", label: "Verifikasi Lelang", icon: "V" },
-    { id: "tentukan-pemenang", label: "Tentukan Pemenang", icon: "T" },
   ];
 
   // Filtering items
@@ -122,6 +117,7 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
 
   // Open Edit Modal
   const handleOpenEdit = (item) => {
+    setIsDetailOpen(false);
     setModalMode("edit");
     setUploadFileName("");
     setFormData({
@@ -234,6 +230,7 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
     }
 
     setItemToDelete(null);
+    setIsDetailOpen(false);
     triggerNotice("delete", `Barang "${deletedName}" berhasil dihapus.`);
   };
 
@@ -290,16 +287,10 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
         return <AdminPengguna {...common} />;
       case "transaksi":
         return <AdminTransaksi {...common} />;
-      case "sengketa":
-        return <AdminSengketa {...common} />;
       case "yayasan":
         return <AdminYayasan {...common} />;
       case "verif-penerima":
         return <AdminVerifPenerima {...common} />;
-      case "verif-lelang":
-        return <AdminVerifLelang {...common} />;
-      case "tentukan-pemenang":
-        return <AdminPemenang {...common} />;
       default:
         return null;
     }
@@ -359,14 +350,8 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
           </nav>
         </div>
 
-        {/* Back Link & Logout */}
+        {/* Logout */}
         <div className="pt-6 px-2.5 flex flex-col gap-3">
-          <button
-            onClick={() => (onNavigate ? onNavigate("home") : window.history.back())}
-            className="flex items-center gap-1.5 text-[#2F7D5B] text-xs font-bold hover:underline cursor-pointer transition-colors"
-          >
-            <span>←</span> Kembali ke situs
-          </button>
           <button
             onClick={() => (onLogout ? onLogout() : onNavigate && onNavigate("login"))}
             className="flex items-center gap-1.5 text-red-600 text-xs font-bold hover:underline cursor-pointer transition-colors text-left"
@@ -446,7 +431,7 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
                   Daftar Barang 
                 </h2>
                 <p className="text-[#66736C] text-[11px] mt-0.5">
-                  Pilih data untuk melihat detail dan melakukan tindakan.
+                  Gunakan tombol Lihat untuk membuka detail dan melakukan tindakan.
                 </p>
               </div>
 
@@ -618,6 +603,7 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedId(item.id);
+                                setIsDetailOpen(true);
                               }}
                               className="px-2.5 py-1 rounded-md border border-[#DCE6DF] bg-white text-[#2F7D5B] text-[9px] font-bold hover:bg-[#E5F2EB] active:scale-95 transition-all cursor-pointer"
                               title="Lihat Detail"
@@ -675,15 +661,32 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
           </section>
 
           {/* ================= CARD 2: DETAIL KURASI ================= */}
-          {selectedItem && (
-            <section className="flex justify-end w-full mt-5 pb-6">
-              <div className="w-[430px] max-w-full bg-white border border-[#DCE6DF] rounded-[15px] p-5 shadow-[0_9px_28px_0_rgba(31,74,51,0.06)]">
+          {isDetailOpen && selectedItem && (
+            <section
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+              onMouseDown={() => setIsDetailOpen(false)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={`Detail ${selectedItem.barang}`}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-[500px] max-w-full max-h-[90vh] overflow-y-auto bg-white border border-[#DCE6DF] rounded-[15px] p-5 shadow-2xl"
+              >
                 {/* Header label with Edit & Delete shortcuts */}
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[#2F7D5B] text-[9px] font-extrabold tracking-[0.137em] uppercase">
                     DETAIL KURASI
                   </p>
                   <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsDetailOpen(false)}
+                      className="w-6 h-6 rounded-full text-[11px] font-bold text-[#56635B] bg-[#EDF2EF] hover:bg-[#DCE6DF] transition-colors cursor-pointer"
+                      aria-label="Tutup detail"
+                    >
+                      ×
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(selectedItem)}
@@ -693,7 +696,10 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
                     </button>
                     <button
                       type="button"
-                      onClick={(e) => handlePromptDelete(selectedItem, e)}
+                      onClick={(e) => {
+                        setIsDetailOpen(false);
+                        handlePromptDelete(selectedItem, e);
+                      }}
                       className="px-2 py-0.5 rounded text-[9px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors cursor-pointer"
                     >
                       ✕ Hapus

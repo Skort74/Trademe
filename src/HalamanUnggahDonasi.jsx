@@ -7,7 +7,7 @@ import { compressImage } from './utils/image';
 const MAX_PHOTOS = 5;
 const KONDISI_LABEL = { baru: 'Baru', bekas_baik: 'Bekas - Baik', bekas_cukup: 'Bekas - Cukup' };
 
-const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
+const HalamanUnggahDonasi = ({ onBack, onNavigate, recipientName, recipientType }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [photos, setPhotos] = useState([]); // foto barang yang dipilih
   const [penerima, setPenerima] = useState(recipientName || ''); // terisi dari kartu, boleh diubah
@@ -89,7 +89,8 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
     return (
       <PopupSuksesDonasi 
         recipientName={penerima || 'Yayasan Mitra'} 
-        onClose={() => onBack && onBack()} 
+        onBackToDonation={() => onBack && onBack()}
+        onViewHistory={() => onNavigate && onNavigate('profile', { section: 'listings' })}
       />
     );
   }

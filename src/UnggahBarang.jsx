@@ -1,5 +1,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
+import PopupSuksesUnggah from "./PopupSuksesUnggah";
+import { addAdminItem } from "./utils/adminStore";
+import { compressImage } from "./utils/image";
 
 // ==========================================
 // DATA JENIS TRANSAKSI
@@ -112,7 +115,8 @@ export default function UnggahBarang({
     useState(null);
 
   const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
+  const [publishedItem, setPublishedItem] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fileRef = useRef(null);
   const photosRef = useRef([]);
@@ -156,7 +160,7 @@ export default function UnggahBarang({
       [key]: e.target.value,
     }));
 
-    setDone(false);
+    setPublishedItem(null);
   };
 
   // ==========================================
@@ -179,7 +183,7 @@ export default function UnggahBarang({
       price: value,
     }));
 
-    setDone(false);
+    setPublishedItem(null);
   };
 
   // ==========================================
@@ -194,7 +198,7 @@ export default function UnggahBarang({
       price: "",
     }));
 
-    setDone(false);
+    setPublishedItem(null);
     setError("");
   };
 
@@ -241,7 +245,7 @@ export default function UnggahBarang({
       setError("");
     }
 
-    setDone(false);
+    setPublishedItem(null);
     e.target.value = "";
   };
 
@@ -271,14 +275,14 @@ export default function UnggahBarang({
     }
 
     setError("");
-    setDone(false);
+    setPublishedItem(null);
   };
 
   // ==========================================
   // SUBMIT FORM
   // ==========================================
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (photos.length === 0) {
@@ -286,23 +290,40 @@ export default function UnggahBarang({
       return;
     }
 
-    const payload = {
-      type,
-      ...form,
-      price:
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const image = await compressImage(photos[0].file);
+      const price =
         type === "Donasi"
           ? null
           : priceField?.money
           ? Number(form.price.replace(/\D/g, ""))
-          : form.price,
-      photos: photos.map((photo) => photo.file),
-    };
+          : form.price;
 
-    console.log("Data barang:", payload);
-    console.log("Pengguna:", currentUser);
+      const item = addAdminItem({
+        barang: form.name.trim(),
+        pemilik: currentUser?.fullName || currentUser?.username || "Tamu",
+        pemilikId: currentUser?.username || null,
+        jenis: type,
+        kurasi: "Menunggu",
+        kondisi: form.condition,
+        kategori: form.category,
+        deskripsi: form.description.trim(),
+        lokasi: form.location.trim(),
+        penerima: type === "Donasi" ? form.recipient.trim() : "",
+        harga: price,
+        image,
+        catatan: "",
+      });
 
-    setError("");
-    setDone(true);
+      setPublishedItem(item);
+    } catch (submitError) {
+      setError("Gagal menyimpan barang. Coba gunakan foto lain atau ukuran yang lebih kecil.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ==========================================
@@ -676,21 +697,13 @@ export default function UnggahBarang({
                 />
               </Field>
 
-              {/* NOTIFIKASI */}
-              {done && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                  Data barang sudah disiapkan.
-                  Silakan cek Console browser.
-                  Data belum tersimpan ke backend.
-                </div>
-              )}
-
               {/* TOMBOL SUBMIT */}
               <button
                 type="submit"
-                className="w-full rounded-xl bg-emerald-700 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-800"
+                disabled={isSubmitting}
+                className="w-full rounded-xl bg-emerald-700 px-5 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-wait disabled:opacity-60"
               >
-                Terbitkan Barang
+                {isSubmitting ? "Menyimpan..." : "Terbitkan Barang"}
               </button>
 
             </div>
@@ -699,6 +712,15 @@ export default function UnggahBarang({
         </form>
 
       </main>
+
+      {publishedItem && (
+        <PopupSuksesUnggah
+          itemName={publishedItem.barang}
+          itemType={publishedItem.jenis}
+          onHome={() => onNavigate?.("home")}
+          onHistory={() => onNavigate?.("profile", { section: "listings" })}
+        />
+      )}
     </div>
   );
 }

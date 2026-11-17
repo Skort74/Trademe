@@ -9,12 +9,27 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function createCollection(key, prefix) {
+function createCollection(key, prefix, initialData = []) {
   const all = () => {
     try {
       const raw = localStorage.getItem(key);
       const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+
+      // Tambahkan seed satu kali, termasuk untuk browser yang sudah memiliki
+      // data sebelum seed diperkenalkan. Setelah itu data tetap dikelola admin.
+      const seedKey = `${key}_seed_v2`;
+      if (initialData.length > 0 && localStorage.getItem(seedKey) !== "done") {
+        const initialById = new Map(initialData.map((item) => [item.id, item]));
+        const existingIds = new Set(parsed.map((item) => item.id));
+        const migrated = parsed.map((item) => ({ ...initialById.get(item.id), ...item }));
+        const seeded = [...migrated, ...initialData.filter((item) => !existingIds.has(item.id))];
+        localStorage.setItem(key, JSON.stringify(seeded));
+        localStorage.setItem(seedKey, "done");
+        return seeded;
+      }
+
+      return parsed;
     } catch (e) {
       return [];
     }
@@ -72,14 +87,78 @@ export const disputes = createCollection("treadme_disputes", "SKT");
  * Yayasan mitra penerima donasi.
  * { name, location, contact, description, needs, status: "Aktif" | "Nonaktif" }
  */
-export const foundations = createCollection("treadme_foundations", "YYS");
+export const FOUNDATION_SEED = [
+  {
+    id: "YYS-001",
+    name: "Yayasan Kasih Anak",
+    needs: "Buku pelajaran, seragam sekolah, mainan edukatif",
+    location: "Gubeng, Surabaya",
+    image: "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=80",
+    status: "Aktif",
+  },
+  {
+    id: "YYS-002",
+    name: "Panti Asuhan Harapan",
+    needs: "Peralatan dapur, selimut, pakaian layak pakai",
+    location: "Wonokromo, Surabaya",
+    image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=800&q=80",
+    status: "Aktif",
+  },
+  {
+    id: "YYS-003",
+    name: "Rumah Singgah Mandiri",
+    needs: "Furnitur bekas, elektronik fungsional, bahan bangunan",
+    location: "Rungkut, Surabaya",
+    image: "https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=800&q=80",
+    status: "Aktif",
+  },
+];
+
+export const foundations = createCollection("treadme_foundations", "YYS", FOUNDATION_SEED);
 
 /**
  * Pengajuan menjadi penerima donasi (dari form AjukanPenerima).
  * { tipe_penerima, nama_lembaga, lokasi, alasan_kebutuhan, dokumen: [nama file],
  *   applicantId, applicantName, status: "Menunggu" | "Disetujui" | "Ditolak", adminNote }
  */
-export const recipientApplications = createCollection("treadme_recipient_applications", "PNR");
+export const RECIPIENT_APPLICATION_SEED = [
+  {
+    id: "PNR-001",
+    tipe_penerima: "perorangan",
+    applicantName: "Siti Aminah",
+    nama_penerima: "Siti Aminah",
+    alasan_kebutuhan: "Buku, meja belajar, pakaian anak",
+    lokasi: "Sukolilo, Surabaya",
+    image: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80",
+    status: "Disetujui",
+  },
+  {
+    id: "PNR-002",
+    tipe_penerima: "perorangan",
+    applicantName: "Pak Hasan",
+    nama_penerima: "Pak Hasan",
+    alasan_kebutuhan: "Peralatan rumah tangga",
+    lokasi: "Rungkut, Surabaya",
+    image: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=800&q=80",
+    status: "Disetujui",
+  },
+  {
+    id: "PNR-003",
+    tipe_penerima: "perorangan",
+    applicantName: "Keluarga Ibu Ratna",
+    nama_penerima: "Keluarga Ibu Ratna",
+    alasan_kebutuhan: "Furnitur dan elektronik",
+    lokasi: "Tegalsari, Surabaya",
+    image: "https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=800&q=80",
+    status: "Disetujui",
+  },
+];
+
+export const recipientApplications = createCollection(
+  "treadme_recipient_applications",
+  "PNR",
+  RECIPIENT_APPLICATION_SEED,
+);
 
 /**
  * Penawaran lelang dari pengguna.

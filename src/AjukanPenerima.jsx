@@ -78,6 +78,7 @@ export default function AjukanPenerima({ onClose, recipientType = "" }) {
     recipientApplications.add({
       tipe_penerima: form.tipe_penerima,
       nama_lembaga: form.tipe_penerima === "yayasan" ? form.nama_lembaga.trim() : "",
+      nama_penerima: form.tipe_penerima === "perorangan" ? form.nama_penerima.trim() : "",
       lokasi: form.lokasi.trim(),
       alasan_kebutuhan: form.alasan_kebutuhan.trim(),
       dokumen: files.map((f) => f.name),

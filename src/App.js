@@ -217,6 +217,7 @@ export default function App() {
         <HalamanProfil
           onNavigate={handleNavigate}
           currentUser={currentUser}
+          initialSection={navParams.section}
           onUpdateProfile={handleUpdateProfile}
           onLogout={handleLogout}
         />

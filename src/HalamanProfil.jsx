@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./HalamanProfil.css";
+import { getAdminItems, STORE_EVENT } from "./utils/adminStore";
+import { compressImage } from "./utils/image";
+import BarangDetailModal from "./BarangDetailModal";
 
 const INITIAL_LISTINGS = [
-  { id: 1, name: "Set Meja Teras", type: "Jual", status: "Aktif" },
-  { id: 2, name: "Rak Buku Serbaguna", type: "Donasi", status: "Dalam kurasi" },
-  { id: 3, name: "Kursi Cafe Minimalis", type: "Lelang", status: "Aktif" },
+  { id: 1, name: "Set Meja Teras", type: "Jual", status: "Aktif", image: "/images/meja-jati.jpg", condition: "Baik", location: "Surabaya" },
+  { id: 2, name: "Rak Buku Serbaguna", type: "Donasi", status: "Dalam kurasi", image: "/ImageMejaBelajarKayu.png", condition: "Baik", location: "Surabaya" },
+  { id: 3, name: "Kursi Cafe Minimalis", type: "Lelang", status: "Aktif", image: "/images/kursi-cafe.jpg", condition: "Sangat baik", location: "Surabaya" },
 ];
 
 const TRANSACTIONS = [
@@ -30,18 +33,67 @@ function StatusBadge({ children }) {
 export default function HalamanProfil({
   onNavigate,
   currentUser,
+  initialSection,
   onUpdateProfile,
   onLogout,
 }) {
-  const [listings, setListings] = useState(INITIAL_LISTINGS);
+  const getListings = useCallback(() => {
+    const username = currentUser?.username;
+    const fullName = currentUser?.fullName;
+    const uploaded = getAdminItems()
+      .filter((item) =>
+        username
+          ? item.pemilikId === username
+          : fullName && item.pemilik === fullName
+      )
+      .map((item) => ({
+        id: `uploaded-${item.id}`,
+        name: item.barang,
+        type: item.jenis,
+        status: item.kurasi === "Menunggu" ? "Dalam kurasi" : item.kurasi,
+        image: item.image,
+        condition: item.kondisi,
+        location: item.lokasi,
+        description: item.deskripsi,
+        recipient: item.penerima,
+        price: item.harga,
+        owner: item.pemilik,
+      }));
+
+    return [...uploaded, ...INITIAL_LISTINGS];
+  }, [currentUser?.fullName, currentUser?.username]);
+
+  const [listings, setListings] = useState(getListings);
   const [isEditing, setIsEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [search, setSearch] = useState("");
+  const [photoError, setPhotoError] = useState("");
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+  const [selectedListing, setSelectedListing] = useState(null);
   const [form, setForm] = useState({
     fullName: currentUser?.fullName || "Pengguna TradeMe",
     phone: currentUser?.phone || "",
     location: currentUser?.location || "Surabaya, Jawa Timur",
+    profilePhoto: currentUser?.profilePhoto || "",
   });
+  const listingsRef = useRef(null);
+
+  useEffect(() => {
+    const refreshListings = () => setListings(getListings());
+    refreshListings();
+    window.addEventListener(STORE_EVENT, refreshListings);
+    window.addEventListener("storage", refreshListings);
+    return () => {
+      window.removeEventListener(STORE_EVENT, refreshListings);
+      window.removeEventListener("storage", refreshListings);
+    };
+  }, [getListings]);
+
+  useEffect(() => {
+    if (initialSection === "listings") {
+      listingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [initialSection]);
 
   const profile = useMemo(
     () => ({
@@ -49,6 +101,7 @@ export default function HalamanProfil({
       email: currentUser?.email || "Email belum tersedia",
       phone: currentUser?.phone || "Nomor telepon belum ditambahkan",
       location: currentUser?.location || "Surabaya, Jawa Timur",
+      profilePhoto: currentUser?.profilePhoto || "",
     }),
     [currentUser]
   );
@@ -58,9 +111,38 @@ export default function HalamanProfil({
       fullName: profile.fullName,
       phone: currentUser?.phone || "",
       location: profile.location,
+      profilePhoto: profile.profilePhoto,
     });
+    setPhotoError("");
     setSaved(false);
     setIsEditing(true);
+  };
+
+  const selectProfilePhoto = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!/^image\/(jpe?g|png)$/.test(file.type)) {
+      setPhotoError("Gunakan foto berformat JPG, JPEG, atau PNG.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("Ukuran foto maksimal 5 MB.");
+      return;
+    }
+
+    setIsProcessingPhoto(true);
+    setPhotoError("");
+    try {
+      const profilePhoto = await compressImage(file, 400, 0.8);
+      setForm((value) => ({ ...value, profilePhoto }));
+    } catch (error) {
+      setPhotoError("Foto gagal diproses. Silakan pilih foto lain.");
+    } finally {
+      setIsProcessingPhoto(false);
+    }
   };
 
   const saveProfile = (event) => {
@@ -69,6 +151,7 @@ export default function HalamanProfil({
       fullName: form.fullName.trim(),
       phone: form.phone.trim(),
       location: form.location.trim(),
+      profilePhoto: form.profilePhoto,
     });
     setIsEditing(false);
     setSaved(true);
@@ -130,7 +213,13 @@ export default function HalamanProfil({
 
       <main className="tp-main">
         <section className="tp-profile-card">
-          <div className="tp-avatar" aria-hidden="true">{getInitials(profile.fullName)}</div>
+          <div className={`tp-avatar ${profile.profilePhoto ? "tp-avatar-photo" : ""}`} aria-hidden="true">
+            {profile.profilePhoto ? (
+              <img src={profile.profilePhoto} alt="" />
+            ) : (
+              getInitials(profile.fullName)
+            )}
+          </div>
 
           <div className="tp-identity">
             <div className="tp-verified">
@@ -162,7 +251,7 @@ export default function HalamanProfil({
           </div>
         )}
 
-        <section className="tp-section-card">
+        <section ref={listingsRef} className="tp-section-card">
           <div className="tp-section-heading">
             <div>
               <p className="tp-kicker">KELOLA LISTING</p>
@@ -191,7 +280,7 @@ export default function HalamanProfil({
                     <td><StatusBadge>{item.status}</StatusBadge></td>
                     <td>
                       <div className="tp-row-actions">
-                        <button type="button">Lihat</button>
+                        <button type="button" onClick={() => setSelectedListing(item)}>Lihat</button>
                         <button type="button" onClick={() => onNavigate?.("unggah")}>Ubah</button>
                         <button
                           className="tp-delete"
@@ -251,6 +340,12 @@ export default function HalamanProfil({
         </button>
       </main>
 
+      <BarangDetailModal
+        item={selectedListing}
+        onClose={() => setSelectedListing(null)}
+        eyebrow="DETAIL UNGGAHAN"
+      />
+
       {isEditing && (
         <div className="tp-modal-backdrop" role="presentation" onMouseDown={() => setIsEditing(false)}>
           <section
@@ -269,6 +364,43 @@ export default function HalamanProfil({
             </div>
 
             <form onSubmit={saveProfile}>
+              <div className="tp-photo-editor">
+                <div className={`tp-photo-preview ${form.profilePhoto ? "has-photo" : ""}`}>
+                  {form.profilePhoto ? (
+                    <img src={form.profilePhoto} alt="Preview foto profil" />
+                  ) : (
+                    getInitials(form.fullName)
+                  )}
+                </div>
+                <div className="tp-photo-controls">
+                  <label className="tp-photo-upload" htmlFor="profile-photo-input">
+                    {isProcessingPhoto ? "Memproses..." : form.profilePhoto ? "Ganti Foto" : "Unggah Foto"}
+                  </label>
+                  <input
+                    id="profile-photo-input"
+                    className="tp-profile-photo-input"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    disabled={isProcessingPhoto}
+                    onChange={selectProfilePhoto}
+                  />
+                  {form.profilePhoto && (
+                    <button
+                      className="tp-photo-remove"
+                      type="button"
+                      onClick={() => {
+                        setForm((value) => ({ ...value, profilePhoto: "" }));
+                        setPhotoError("");
+                      }}
+                    >
+                      Hapus
+                    </button>
+                  )}
+                  <p>JPG atau PNG, maksimal 5 MB.</p>
+                </div>
+              </div>
+              {photoError && <p className="tp-photo-error" role="alert">{photoError}</p>}
+
               <label>
                 Nama lengkap
                 <input
@@ -296,7 +428,7 @@ export default function HalamanProfil({
 
               <div className="tp-modal-actions">
                 <button className="tp-cancel" type="button" onClick={() => setIsEditing(false)}>Batal</button>
-                <button className="tp-save" type="submit">Simpan Perubahan</button>
+                <button className="tp-save" type="submit" disabled={isProcessingPhoto}>Simpan Perubahan</button>
               </div>
             </form>
           </section>
