@@ -1,5 +1,26 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./HalamanProfil.css";
+import BackButton from "./components/BackButton";
+import GoogleMap from "./components/GoogleMap";
+import RiwayatTransaksi from "./RiwayatTransaksi";
+import {
+  EMPTY_ADDRESS,
+  REQUIRED_ADDRESS_FIELDS,
+  isAddressComplete,
+  formatAddress,
+  addressMapQuery,
+} from "./utils/address";
+
+const ADDRESS_LABELS = {
+  street: "Nama jalan, nomor rumah, blok",
+  rtRw: "RT/RW",
+  kelurahan: "Kelurahan / desa",
+  kecamatan: "Kecamatan",
+  city: "Kota / kabupaten",
+  province: "Provinsi",
+  postalCode: "Kode pos",
+  notes: "Patokan (opsional)",
+};
 
 const INITIAL_LISTINGS = [
   { id: 1, name: "Set Meja Teras", type: "Jual", status: "Aktif" },
@@ -7,11 +28,6 @@ const INITIAL_LISTINGS = [
   { id: 3, name: "Kursi Cafe Minimalis", type: "Lelang", status: "Aktif" },
 ];
 
-const TRANSACTIONS = [
-  { id: 1, name: "Sepeda Kota Vintage", type: "Pembelian", status: "Menunggu COD" },
-  { id: 2, name: "Meja Kayu Jati", type: "Penukaran", status: "Selesai" },
-  { id: 3, name: "Kursi Cafe", type: "Lelang", status: "Penawaran aktif" },
-];
 
 function getInitials(name = "Pengguna TradeMe") {
   return name
@@ -29,26 +45,35 @@ function StatusBadge({ children }) {
 
 export default function HalamanProfil({
   onNavigate,
+  onGoBack,
   currentUser,
   onUpdateProfile,
   onLogout,
+  openAddressEditor = false,
 }) {
   const [listings, setListings] = useState(INITIAL_LISTINGS);
   const [isEditing, setIsEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [search, setSearch] = useState("");
+  const [formError, setFormError] = useState("");
   const [form, setForm] = useState({
     fullName: currentUser?.fullName || "Pengguna TradeMe",
     phone: currentUser?.phone || "",
-    location: currentUser?.location || "Surabaya, Jawa Timur",
+    address: { ...EMPTY_ADDRESS, ...(currentUser?.address || {}) },
   });
+
+  const address = currentUser?.address || null;
+  const addressReady = isAddressComplete(address);
 
   const profile = useMemo(
     () => ({
       fullName: currentUser?.fullName || "Pengguna TradeMe",
       email: currentUser?.email || "Email belum tersedia",
       phone: currentUser?.phone || "Nomor telepon belum ditambahkan",
-      location: currentUser?.location || "Surabaya, Jawa Timur",
+      location:
+        currentUser?.address?.kecamatan && currentUser?.address?.city
+          ? `${currentUser.address.kecamatan}, ${currentUser.address.city}`
+          : currentUser?.location || "Alamat belum dilengkapi",
     }),
     [currentUser]
   );
@@ -57,18 +82,40 @@ export default function HalamanProfil({
     setForm({
       fullName: profile.fullName,
       phone: currentUser?.phone || "",
-      location: profile.location,
+      address: { ...EMPTY_ADDRESS, ...(currentUser?.address || {}) },
     });
+    setFormError("");
     setSaved(false);
     setIsEditing(true);
   };
 
+  // Dibuka dari checkout (Delivery) → langsung tampilkan form alamat
+  useEffect(() => {
+    if (openAddressEditor && currentUser) openEditForm();
+  }, [openAddressEditor]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setAddressField = (key) => (event) =>
+    setForm((value) => ({ ...value, address: { ...value.address, [key]: event.target.value } }));
+
   const saveProfile = (event) => {
     event.preventDefault();
+    const trimmed = Object.fromEntries(
+      Object.entries(form.address).map(([k, v]) => [k, String(v || "").trim()])
+    );
+    const missing = REQUIRED_ADDRESS_FIELDS.filter((k) => !trimmed[k]);
+    if (missing.length) {
+      setFormError(`Lengkapi: ${missing.map((k) => ADDRESS_LABELS[k]).join(", ")}.`);
+      return;
+    }
+    if (!/^\d{5}$/.test(trimmed.postalCode)) {
+      setFormError("Kode pos harus 5 digit angka.");
+      return;
+    }
     onUpdateProfile?.({
       fullName: form.fullName.trim(),
       phone: form.phone.trim(),
-      location: form.location.trim(),
+      address: trimmed,
+      location: `${trimmed.kecamatan}, ${trimmed.city}`,
     });
     setIsEditing(false);
     setSaved(true);
@@ -83,10 +130,13 @@ export default function HalamanProfil({
     <div className="tp-page">
       <header className="tp-header">
         <div className="tp-nav">
-          <button className="tp-brand" type="button" onClick={() => onNavigate?.("home")}>
-            <span className="tp-brand-mark">T</span>
-            <span className="tp-brand-name">TradeMe</span>
-          </button>
+          <div className="tp-nav-start">
+            <BackButton onClick={onGoBack} />
+            <button className="tp-brand" type="button" onClick={() => onNavigate?.("home")}>
+              <span className="tp-brand-mark">T</span>
+              <span className="tp-brand-name">TradeMe</span>
+            </button>
+          </div>
 
           <form className="tp-search" onSubmit={submitSearch}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -165,6 +215,35 @@ export default function HalamanProfil({
         <section className="tp-section-card">
           <div className="tp-section-heading">
             <div>
+              <p className="tp-kicker">PENGIRIMAN</p>
+              <h2>Alamat Rumah</h2>
+            </div>
+            <button className="tp-outline-button tp-address-button" type="button" onClick={openEditForm}>
+              {addressReady ? "Ubah Alamat" : "Lengkapi Alamat"}
+            </button>
+          </div>
+
+          {addressReady ? (
+            <div className="tp-address-grid">
+              <div>
+                <p className="tp-address-text">{formatAddress(address)}</p>
+                {address.notes && <p className="tp-address-notes">Patokan: {address.notes}</p>}
+                <p className="tp-address-hint">
+                  Alamat ini otomatis dipakai saat kamu memilih Delivery di halaman pembayaran.
+                </p>
+              </div>
+              <GoogleMap query={addressMapQuery(address)} height={220} title="Alamat rumah" />
+            </div>
+          ) : (
+            <div className="tp-address-empty">
+              Alamat rumah belum lengkap. Lengkapi alamat agar bisa memakai Delivery saat membeli barang.
+            </div>
+          )}
+        </section>
+
+        <section className="tp-section-card">
+          <div className="tp-section-heading">
+            <div>
               <p className="tp-kicker">KELOLA LISTING</p>
               <h2>Barang Saya</h2>
             </div>
@@ -214,37 +293,7 @@ export default function HalamanProfil({
           </div>
         </section>
 
-        <section className="tp-section-card">
-          <div className="tp-section-heading">
-            <div>
-              <p className="tp-kicker">AKTIVITAS TERBARU</p>
-              <h2>Riwayat Transaksi</h2>
-            </div>
-          </div>
-
-          <div className="tp-table-wrap">
-            <table className="tp-table tp-transaction-table">
-              <thead>
-                <tr>
-                  <th>Barang</th>
-                  <th>Jenis</th>
-                  <th>Status</th>
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {TRANSACTIONS.map((item) => (
-                  <tr key={item.id}>
-                    <td className="tp-item-name">{item.name}</td>
-                    <td>{item.type}</td>
-                    <td><StatusBadge>{item.status}</StatusBadge></td>
-                    <td><button className="tp-view-button" type="button">Lihat</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <RiwayatTransaksi currentUser={currentUser} onNavigate={onNavigate} />
 
         <button className="tp-logout" type="button" onClick={onLogout}>
           Keluar dari akun <span aria-hidden="true">→</span>
@@ -254,7 +303,7 @@ export default function HalamanProfil({
       {isEditing && (
         <div className="tp-modal-backdrop" role="presentation" onMouseDown={() => setIsEditing(false)}>
           <section
-            className="tp-modal"
+            className="tp-modal tp-modal-wide"
             role="dialog"
             aria-modal="true"
             aria-labelledby="edit-profile-title"
@@ -285,14 +334,66 @@ export default function HalamanProfil({
                   placeholder="Contoh: 0812 3456 7890"
                 />
               </label>
-              <label>
-                Lokasi
-                <input
-                  required
-                  value={form.location}
-                  onChange={(event) => setForm((value) => ({ ...value, location: event.target.value }))}
-                />
-              </label>
+              <fieldset className="tp-address-fieldset">
+                <legend>Alamat rumah lengkap</legend>
+                <label>
+                  {ADDRESS_LABELS.street} <span className="tp-required">*</span>
+                  <input
+                    value={form.address.street}
+                    onChange={setAddressField("street")}
+                    placeholder="Contoh: Jl. Raya Darmo No. 25, Blok B"
+                  />
+                </label>
+                <div className="tp-grid-2">
+                  <label>
+                    {ADDRESS_LABELS.rtRw}
+                    <input value={form.address.rtRw} onChange={setAddressField("rtRw")} placeholder="003/005" />
+                  </label>
+                  <label>
+                    {ADDRESS_LABELS.kelurahan} <span className="tp-required">*</span>
+                    <input value={form.address.kelurahan} onChange={setAddressField("kelurahan")} placeholder="Darmo" />
+                  </label>
+                  <label>
+                    {ADDRESS_LABELS.kecamatan} <span className="tp-required">*</span>
+                    <input value={form.address.kecamatan} onChange={setAddressField("kecamatan")} placeholder="Wonokromo" />
+                  </label>
+                  <label>
+                    {ADDRESS_LABELS.city} <span className="tp-required">*</span>
+                    <input value={form.address.city} onChange={setAddressField("city")} placeholder="Surabaya" />
+                  </label>
+                  <label>
+                    {ADDRESS_LABELS.province} <span className="tp-required">*</span>
+                    <input value={form.address.province} onChange={setAddressField("province")} placeholder="Jawa Timur" />
+                  </label>
+                  <label>
+                    {ADDRESS_LABELS.postalCode} <span className="tp-required">*</span>
+                    <input
+                      value={form.address.postalCode}
+                      onChange={(event) =>
+                        setForm((value) => ({
+                          ...value,
+                          address: { ...value.address, postalCode: event.target.value.replace(/\D/g, "").slice(0, 5) },
+                        }))
+                      }
+                      inputMode="numeric"
+                      placeholder="60241"
+                    />
+                  </label>
+                </div>
+                <label>
+                  {ADDRESS_LABELS.notes}
+                  <input
+                    value={form.address.notes}
+                    onChange={setAddressField("notes")}
+                    placeholder="Contoh: Pagar hitam, sebelah masjid"
+                  />
+                </label>
+                {addressMapQuery(form.address) && (
+                  <GoogleMap query={addressMapQuery(form.address)} height={170} title="Pratinjau alamat" />
+                )}
+              </fieldset>
+
+              {formError && <p className="tp-form-error">{formError}</p>}
 
               <div className="tp-modal-actions">
                 <button className="tp-cancel" type="button" onClick={() => setIsEditing(false)}>Batal</button>

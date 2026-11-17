@@ -1,5 +1,8 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getCurrentSession } from "./utils/auth";
+import { getConversationsForUser, countUnread } from "./utils/chat";
+import { getOffers } from "./utils/negotiation";
 
 // ==========================================
 // KOMPONEN ICON
@@ -64,6 +67,45 @@ const navItem =
 // KOMPONEN HEADER
 // ==========================================
 export function SiteHeader({ onNavigate }) {
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    const checkUnread = () => {
+      const user = getCurrentSession();
+      if (!user) {
+        setHasUnread(false);
+        return;
+      }
+      const convs = getConversationsForUser(user);
+      const unreadMsgs = convs.some((c) => countUnread(c, user.username) > 0);
+      if (unreadMsgs) {
+        setHasUnread(true);
+        return;
+      }
+      const offers = getOffers();
+      const isSeller = user.role === "admin" || user.username === "budi";
+      if (isSeller) {
+        if (offers.some((o) => o.status === "pending" || o.status === "counter_buyer")) {
+          setHasUnread(true);
+          return;
+        }
+      } else {
+        if (offers.some((o) => o.buyerId === user.username && (o.status === "counter_seller" || o.status === "accepted"))) {
+          setHasUnread(true);
+          return;
+        }
+      }
+      setHasUnread(false);
+    };
+
+    checkUnread();
+    window.addEventListener("storage", checkUnread);
+    const iv = setInterval(checkUnread, 2000);
+    return () => {
+      window.removeEventListener("storage", checkUnread);
+      clearInterval(iv);
+    };
+  }, []);
 
   // Navigasi ke halaman Unggah Barang
   const handleUnggah = () => {
@@ -130,9 +172,9 @@ export function SiteHeader({ onNavigate }) {
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </Icon>
 
-            <span className="absolute -left-1 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white">
-              2
-            </span>
+            {hasUnread && (
+              <span className="absolute -left-1 -top-1.5 flex h-2.5 w-2.5 rounded-full bg-rose-500 border-2 border-white ring-1 ring-rose-400" title="Ada chat baru"></span>
+            )}
 
             Chat
           </button>

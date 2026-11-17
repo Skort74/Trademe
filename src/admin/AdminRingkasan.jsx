@@ -23,7 +23,7 @@ export default function AdminRingkasan({ items, onGoTab }) {
   const kurasiPending = items.filter((i) => ["Menunggu", "Ditinjau", "Dilaporkan"].includes(i.kurasi)).length;
   const reported = items.filter((i) => i.kurasi === "Dilaporkan").length;
   const lelangPending = items.filter((i) => i.jenis === "Lelang" && (i.lelang?.verif || "Menunggu Verifikasi") === "Menunggu Verifikasi").length;
-  const txActive = d.txs.filter((t) => ["Menunggu Pembayaran", "Dibayar", "Dikirim"].includes(t.status));
+  const txActive = d.txs.filter((t) => ["Menunggu Pembayaran", "Menunggu COD", "Dibayar", "Dikirim"].includes(t.status));
   const txDone = d.txs.filter((t) => t.status === "Selesai");
   const gmv = txDone.reduce((s, t) => s + Number(t.total || t.amount || 0), 0);
   const disputesOpen = d.disputes.filter((x) => x.status !== "Selesai").length;

@@ -489,3 +489,184 @@
   .tp-section-heading { align-items: center; }
   .tp-section-upload { min-width: auto; padding: 0 12px; }
 }
+
+/* ===== Tombol kembali di header ===== */
+.tp-nav-start {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+/* ===== Alamat rumah ===== */
+.tp-modal-wide {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.tp-address-fieldset {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid #deebe3;
+  border-radius: 12px;
+}
+
+.tp-address-fieldset legend {
+  padding: 0 6px;
+  color: #2f7d5b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tp-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tp-required { color: #dc2626; }
+
+.tp-form-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tp-address-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.tp-address-text {
+  margin: 0;
+  color: #1f2a24;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.tp-address-notes {
+  margin: 6px 0 0;
+  color: #516057;
+  font-size: 13px;
+}
+
+.tp-address-hint {
+  margin: 12px 0 0;
+  color: #65756b;
+  font-size: 12px;
+}
+
+.tp-address-empty {
+  padding: 16px;
+  border: 1px dashed #f0c56b;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tp-address-button { margin-left: 0 !important; width: auto !important; }
+
+@media (max-width: 760px) {
+  .tp-address-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .tp-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ===== Riwayat transaksi ===== */
+.tp-pending-banner {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid #f5d38a;
+  border-radius: 11px;
+  background: #fffaeb;
+  color: #8a5300;
+  font-size: 12px;
+}
+
+.tp-row-urgent td { background: #fffdf5; }
+
+.tp-row-sub {
+  display: block;
+  margin-top: 3px;
+  color: #74827a;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tp-row-actions-wrap { flex-wrap: wrap; }
+
+.tp-row-actions .tp-pay-button {
+  border-color: #2f7d5b;
+  color: #fff;
+  background: #2f7d5b;
+}
+
+.tp-row-actions .tp-pay-button:hover { background: #25664a; }
+
+.tp-status-urgent { color: #9a4d00; background: #fdebc8; }
+.tp-status-warn { color: #8a5a00; background: #fdf3d7; }
+.tp-status-info { color: #1e4f9a; background: #e3edfc; }
+.tp-status-done { color: #22654a; background: #d8efe2; }
+.tp-status-bad { color: #a63a4a; background: #fbe4e8; }
+
+.tp-detail-list {
+  display: grid;
+  margin: 0 0 14px;
+  border: 1px solid #e3ece6;
+  border-radius: 11px;
+}
+
+.tp-detail-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 12px;
+  border-top: 1px solid #eef3ef;
+}
+
+.tp-detail-list > div:first-child { border-top: 0; }
+.tp-detail-list dt { color: #6a786f; font-size: 12px; }
+.tp-detail-list dd { margin: 0; color: #1f2a24; font-size: 12px; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+
+.tp-confirm-text {
+  margin: 0 0 6px;
+  color: #516057;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tp-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d8e4dc;
+  border-radius: 9px;
+  outline: none;
+  color: #1f2a24;
+  background: #fafcfb;
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.tp-textarea:focus {
+  border-color: #2f7d5b;
+  box-shadow: 0 0 0 3px rgba(47, 125, 91, 0.12);
+}
+
+.tp-modal-actions .tp-save:disabled { opacity: 0.55; cursor: not-allowed; }

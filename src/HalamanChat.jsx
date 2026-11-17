@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
+  OFFERS_STORAGE_KEY,
   getOffers,
   acceptOffer,
   rejectOffer,
@@ -7,6 +8,7 @@ import {
   buyerCounterOffer,
   cancelDeal,
   createOffer,
+  entryKind,
 } from "./utils/negotiation";
 import {
   CHAT_STORAGE_KEY,
@@ -17,9 +19,10 @@ import {
   sendMessage,
   countUnread,
 } from "./utils/chat";
+import BackButton from "./components/BackButton";
 
 const POLL_MS = 1500;
-const OFFERS_STORAGE_KEY = "treadme_offers";
+const OPEN_STATUSES = ["pending", "counter_seller", "counter_buyer", "accepted"];
 
 function fmtRp(num) {
   return "Rp" + Number(num || 0).toLocaleString("id-ID");
@@ -27,6 +30,11 @@ function fmtRp(num) {
 
 function parseRp(str) {
   return Number(String(str || "").replace(/\D/g, ""));
+}
+
+function formatInputRp(value) {
+  const raw = String(value || "").replace(/\D/g, "");
+  return raw ? Number(raw).toLocaleString("id-ID") : "";
 }
 
 function fmtTime(iso) {
@@ -61,12 +69,12 @@ function isNegotiableProduct(p) {
   return !!p && p.status === "Membuka Penawaran" && p.category === "Jual";
 }
 
-/** Penawaran yang terkait dengan satu percakapan (barang + pembeli) */
+/** Penawaran yang terkait dengan satu percakapan (barang + pembeli), urut dari yang terlama */
 function offersForConversation(conv) {
   if (!conv) return [];
-  return getOffers().filter(
-    (o) => String(o.itemId) === String(conv.itemId) && o.buyerId === conv.buyerId
-  );
+  return getOffers()
+    .filter((o) => String(o.itemId) === String(conv.itemId) && o.buyerId === conv.buyerId)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 }
 
 /** Gabungkan pesan teks & riwayat penawaran menjadi satu timeline urut waktu */
@@ -80,6 +88,7 @@ function buildTimeline(conv, offers) {
         key: `o-${offer.id}-${idx}`,
         offer,
         entry: h,
+        kind: entryKind(h),
         isLatest: idx === offer.history.length - 1,
         time: h.time,
       });
@@ -103,8 +112,8 @@ function lastActivity(conv) {
   return { text: "Belum ada pesan", time: conv.updatedAt };
 }
 
-// ─── Modal Deal Confirm (sisi buyer) ───────────────────────────────────────
-function DealConfirmModal({ open, dealPrice, onCancel, onProceed }) {
+// ─── Modal Deal (sisi pembeli, saat penjual menerima tawaran) ──────────────
+function DealConfirmModal({ open, dealPrice, onLater, onCancelDeal, onProceed }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -115,75 +124,108 @@ function DealConfirmModal({ open, dealPrice, onCancel, onProceed }) {
           </svg>
         </div>
         <h3 className="text-lg font-bold text-[#1F2A24] mb-1">Harga Deal! 🎉</h3>
-        <p className="text-sm text-[#516057] mb-2">Harga telah disepakati</p>
+        <p className="text-sm text-[#516057] mb-2">Penjual menyetujui tawaranmu</p>
         <p className="text-2xl font-extrabold text-[#2F7D5B] mb-5">{fmtRp(dealPrice)}</p>
-        <p className="text-xs text-[#718096] mb-6">
-          Lanjutkan ke halaman barang untuk bayar, atau batalkan proses ini.
-        </p>
-        <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50 rounded-xl"
-          >
-            Batalkan
+        <div className="flex flex-col gap-2">
+          <button onClick={onProceed}
+            className="w-full py-2.5 text-sm font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-xl shadow-sm transition-all">
+            Bayar Sekarang →
           </button>
-          <button
-            onClick={onProceed}
-            className="flex-1 py-2.5 text-sm font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-xl shadow-sm transition-all"
-          >
-            Lanjut Bayar →
+          <button onClick={onLater}
+            className="w-full py-2.5 text-sm font-semibold text-[#2F7D5B] border border-[#2F7D5B] hover:bg-[#EAF5EF] rounded-xl">
+            Nanti Saja
+          </button>
+          <button onClick={onCancelDeal}
+            className="w-full py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 rounded-xl">
+            Batalkan Deal
           </button>
         </div>
+        <p className="text-[11px] text-[#718096] mt-3">
+          Belum sempat bayar? Lanjutkan kapan saja dari <strong>Profil → Riwayat Transaksi</strong>.
+        </p>
       </div>
     </div>
   );
 }
 
+// ─── Input harga kecil (dipakai di form tawar & usulan penjual) ────────────
+function PriceInput({ value, onChange, onEnter, placeholder = "0", autoFocus, className = "" }) {
+  return (
+    <div className={`relative flex-1 ${className}`}>
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">Rp</span>
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(formatInputRp(e.target.value))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            onEnter && onEnter();
+          }
+        }}
+        autoFocus={autoFocus}
+        className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-bold focus:outline-none focus:border-[#2F7D5B]"
+      />
+    </div>
+  );
+}
+
 // ─── Komponen utama ────────────────────────────────────────────────────────
-export default function HalamanChat({ product, onBack, onNavigate, onLogout, currentUser }) {
+export default function HalamanChat({
+  product,
+  initialConversationId,
+  openOffer,
+  onBack,
+  onGoBack,
+  onNavigate,
+  onLogout,
+  currentUser,
+}) {
   // ── Percakapan aktif ────────────────────────────────────────────────────
-  // Jika dibuka dari halaman barang oleh pembeli → buka/buat percakapan barang itu.
-  // Jika dibuka dari navbar → buka percakapan terbaru.
+  // Pembeli yang datang dari halaman barang → buka/buat percakapan barang itu.
+  // Penjual → percakapan yang diminta, atau percakapan terbaru untuk barang itu.
+  // Dari navbar → percakapan terbaru.
   const [activeId, setActiveId] = useState(() => {
     if (!currentUser) return null;
+    const all = getConversationsForUser(currentUser);
+    if (initialConversationId && all.some((c) => c.id === initialConversationId)) return initialConversationId;
     if (product && product.id != null) {
-      if (!isSellerUser(currentUser, product)) {
-        return ensureConversation(product, currentUser).id;
-      }
-      const forItem = getConversationsForUser(currentUser).find(
-        (c) => String(c.itemId) === String(product.id)
-      );
+      if (!isSellerUser(currentUser, product)) return ensureConversation(product, currentUser).id;
+      const forItem = all.find((c) => String(c.itemId) === String(product.id));
       if (forItem) return forItem.id;
     }
-    const all = getConversationsForUser(currentUser);
     return all[0]?.id || null;
   });
 
-  // tick dipakai untuk memicu re-render saat data localStorage berubah
+  // tick memicu render ulang saat data localStorage berubah
   const [, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
   const [search, setSearch] = useState("");
   const [inputText, setInputText] = useState("");
-  const [counterInputVal, setCounterInputVal] = useState("");
-  const [showCounterFor, setShowCounterFor] = useState(null); // offerId
-  const [showOfferInput, setShowOfferInput] = useState(false);
-  const [offerInputVal, setOfferInputVal] = useState("");
+
+  // Form tawar (pembeli)
+  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [offerInput, setOfferInput] = useState("");
   const [offerError, setOfferError] = useState("");
 
-  // Deal confirm popup (buyer)
-  const [showDealModal, setShowDealModal] = useState(false);
-  const [dealPrice, setDealPrice] = useState(null);
-  const [dealOfferId, setDealOfferId] = useState(null);
+  // Form usulan harga (penjual)
+  const [counterFor, setCounterFor] = useState(null); // offerId
+  const [counterInput, setCounterInput] = useState("");
+  const [counterError, setCounterError] = useState("");
+
+  // Popup deal (pembeli)
+  const [dealModalOffer, setDealModalOffer] = useState(null);
   const shownPopupRef = useRef(new Set());
 
   const messagesEndRef = useRef(null);
 
   // ── Data turunan (dibaca ulang dari storage setiap render) ──────────────
   const conversations = getConversationsForUser(currentUser).filter((c) => {
-    // Sembunyikan percakapan kosong dari sisi penjual (pembeli baru membuka chat)
-    const isBuyerSide = c.buyerId === currentUser?.username;
-    if (isBuyerSide || c.id === activeId) return true;
+    // Percakapan kosong hanya terlihat oleh pembeli yang membukanya
+    if (c.buyerId === currentUser?.username || c.id === activeId) return true;
     return (c.messages || []).length > 0 || offersForConversation(c).length > 0;
   });
   const activeConv = conversations.find((c) => c.id === activeId) || null;
@@ -192,12 +234,17 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
   const iAmSeller = !!activeConv && !iAmBuyer;
   const otherName = activeConv ? (iAmBuyer ? activeConv.sellerName : activeConv.buyerName) : "";
   const item = activeConv?.product || null;
+  const itemPrice = Number(item?.price) || 0;
   const isNegotiable = isNegotiableProduct(item);
 
   const convOffers = offersForConversation(activeConv);
   const timeline = buildTimeline(activeConv, convOffers);
-  const activeOffer =
-    convOffers.find((o) => !["rejected", "cancelled"].includes(o.status)) || null;
+  const activeOffer = [...convOffers].reverse().find((o) => OPEN_STATUSES.includes(o.status)) || null;
+  const offerStatus = activeOffer?.status || null;
+
+  // Pembeli boleh mengajukan tawaran baru jika tidak ada negosiasi berjalan,
+  // atau membalas saat penjual mengusulkan harga
+  const buyerCanOffer = isNegotiable && iAmBuyer && (!activeOffer || offerStatus === "counter_seller");
 
   const q = search.trim().toLowerCase();
   const filteredConversations = conversations.filter((c) => {
@@ -222,7 +269,16 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
     };
   }, [refresh]);
 
-  // ── Tandai sudah dibaca saat ada pesan baru di percakapan aktif ─────────
+  // ── Buka form tawar otomatis bila datang dari tombol "Buka Penawaran" ───
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (openOffer && buyerCanOffer && !autoOpenedRef.current) {
+      autoOpenedRef.current = true;
+      setShowOfferForm(true);
+    }
+  }, [openOffer, buyerCanOffer]);
+
+  // ── Tandai sudah dibaca ─────────────────────────────────────────────────
   const activeMsgCount = activeConv?.messages?.length || 0;
   useEffect(() => {
     if (activeId && currentUser) markConversationRead(activeId, currentUser.username);
@@ -230,57 +286,54 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
 
   // ── Auto scroll ke bawah ────────────────────────────────────────────────
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [activeId, timeline.length]);
 
-  // ── Popup deal untuk pembeli saat penjual menerima ──────────────────────
-  const acceptedOfferId = iAmBuyer && activeOffer?.status === "accepted" ? activeOffer.id : null;
-  const acceptedPrice = activeOffer?.price;
+  // ── Popup deal untuk pembeli saat PENJUAL menerima tawaran ──────────────
+  const lastEntry = activeOffer?.history?.[activeOffer.history.length - 1];
+  const sellerJustAccepted =
+    iAmBuyer && offerStatus === "accepted" && lastEntry?.actor === "seller" ? activeOffer.id : null;
   useEffect(() => {
-    if (!acceptedOfferId || shownPopupRef.current.has(acceptedOfferId)) return;
-    shownPopupRef.current.add(acceptedOfferId);
-    setDealPrice(acceptedPrice);
-    setDealOfferId(acceptedOfferId);
-    setShowDealModal(true);
-  }, [acceptedOfferId, acceptedPrice]);
+    if (!sellerJustAccepted || shownPopupRef.current.has(sellerJustAccepted)) return;
+    shownPopupRef.current.add(sellerJustAccepted);
+    setDealModalOffer(sellerJustAccepted);
+  }, [sellerJustAccepted]);
 
-  // Reset input saat berpindah percakapan
-  const selectConversation = (id) => {
-    setActiveId(id);
-    setShowOfferInput(false);
-    setOfferInputVal("");
+  const resetForms = () => {
+    setShowOfferForm(false);
+    setOfferInput("");
     setOfferError("");
-    setShowCounterFor(null);
-    setCounterInputVal("");
+    setCounterFor(null);
+    setCounterInput("");
+    setCounterError("");
   };
 
-  const postMessage = (text) => {
-    if (!activeConv || !currentUser) return;
-    sendMessage(activeConv.id, currentUser, text);
-    refresh();
+  const selectConversation = (id) => {
+    setActiveId(id);
+    resetForms();
   };
 
   // ── Kirim pesan teks ────────────────────────────────────────────────────
   const handleSend = (e) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
-    postMessage(inputText);
+    if (!inputText.trim() || !activeConv) return;
+    sendMessage(activeConv.id, currentUser, inputText);
     setInputText("");
+    refresh();
   };
 
-  // ── Buyer: kirim penawaran baru / counter ───────────────────────────────
+  // ── Pembeli: kirim tawaran / balas usulan penjual ───────────────────────
   const handleBuyerSendOffer = () => {
-    const val = parseRp(offerInputVal);
-    if (!val || val <= 0) {
-      setOfferError("Masukkan harga yang valid.");
-      return;
+    const val = parseRp(offerInput);
+    if (!val) return setOfferError("Masukkan harga yang valid.");
+    if (itemPrice && val >= itemPrice) {
+      return setOfferError(`Tawaran harus di bawah harga barang (${fmtRp(itemPrice)}).`);
     }
-    if (item?.price && val > Number(item.price)) {
-      setOfferError(`Tawaran tidak boleh melebihi harga barang (${fmtRp(item.price)}).`);
-      return;
+    if (offerStatus === "counter_seller" && val >= activeOffer.price) {
+      return setOfferError(`Usulan penjual ${fmtRp(activeOffer.price)} — kalau setuju, tekan "Setuju & Bayar".`);
     }
     const name = currentUser.fullName || currentUser.username;
-    if (activeOffer && activeOffer.status !== "accepted") {
+    if (offerStatus === "counter_seller") {
       buyerCounterOffer(activeOffer.id, val, name);
     } else {
       createOffer({
@@ -291,59 +344,67 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
         itemTitle: item?.title,
       });
     }
-    setOfferInputVal("");
-    setOfferError("");
-    setShowOfferInput(false);
+    resetForms();
     refresh();
   };
 
-  // ── Seller: terima / tolak / counter ────────────────────────────────────
+  // ── Penjual: terima / tolak / usulkan harga ─────────────────────────────
   const handleSellerAccept = (offerId) => {
     acceptOffer(offerId, "seller");
+    resetForms();
     refresh();
   };
 
   const handleSellerReject = (offerId) => {
     rejectOffer(offerId);
-    postMessage("Maaf, penawaran ini tidak bisa saya terima.");
-  };
-
-  const handleSellerCounter = (offerId) => {
-    const val = parseRp(counterInputVal);
-    if (!val || val <= 0) return;
-    counterOffer(offerId, val);
-    setShowCounterFor(null);
-    setCounterInputVal("");
+    resetForms();
     refresh();
   };
 
-  // ── Buyer: respon counter dari seller ───────────────────────────────────
-  const handleBuyerAcceptCounter = (offerId, price) => {
-    shownPopupRef.current.add(offerId);
-    acceptOffer(offerId, "buyer");
-    setDealPrice(price);
-    setDealOfferId(offerId);
-    setShowDealModal(true);
+  const handleSellerCounter = () => {
+    const val = parseRp(counterInput);
+    if (!val) return setCounterError("Masukkan harga yang valid.");
+    if (val <= activeOffer.price) {
+      return setCounterError(`Harus lebih tinggi dari tawaran pembeli (${fmtRp(activeOffer.price)}). Kalau setuju, tekan "Terima".`);
+    }
+    if (itemPrice && val > itemPrice) {
+      return setCounterError(`Tidak boleh melebihi harga barang (${fmtRp(itemPrice)}).`);
+    }
+    counterOffer(counterFor, val);
+    resetForms();
     refresh();
   };
 
-  const handleBuyerCancelNegotiation = (offerId) => {
-    cancelDeal(offerId);
-    postMessage("Saya batalkan proses negosiasi. Terima kasih.");
+  // ── Pembeli: setuju usulan penjual ──────────────────────────────────────
+  // Pembeli menyetujui usulan penjual → langsung lanjut ke pembayaran
+  const handleBuyerAcceptCounter = (offerId) => {
+    const accepted = acceptOffer(offerId, "buyer");
+    resetForms();
+    refresh();
+    if (accepted) goToCheckout(accepted);
   };
 
-  // ── Deal popup ──────────────────────────────────────────────────────────
-  const handleDealCancel = () => {
-    setShowDealModal(false);
-    if (dealOfferId) handleBuyerCancelNegotiation(dealOfferId);
+  // ── Batalkan negosiasi (pembeli / penjual) ──────────────────────────────
+  const handleCancel = (offerId) => {
+    cancelDeal(offerId, iAmSeller ? "seller" : "buyer");
+    setDealModalOffer(null);
+    resetForms();
+    refresh();
   };
 
-  const handleDealProceed = () => {
-    setShowDealModal(false);
-    onNavigate &&
-      onNavigate("detail", {
-        product: { ...item, price: dealPrice, priceText: fmtRp(dealPrice), dealPrice },
-      });
+  // ── Bayar harga deal → langsung ke checkout ─────────────────────────────
+  const goToCheckout = (offer) => {
+    setDealModalOffer(null);
+    if (!onNavigate || !offer) return;
+    onNavigate("checkout", {
+      product: {
+        ...item,
+        price: offer.price,
+        priceText: fmtRp(offer.price),
+        dealPrice: offer.price,
+        offerId: offer.id,
+      },
+    });
   };
 
   const openProduct = () => {
@@ -352,126 +413,185 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
   };
 
   // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
+  // Status negosiasi (bar di bawah info barang)
   // ─────────────────────────────────────────────────────────────────────────
-  const renderOfferBubble = (t) => {
-    const { offer, entry, isLatest } = t;
-    const status = offer.status;
-    const isSellerAction = entry.actor === "seller";
-    const isAcceptEntry = /menerima harga/i.test(entry.note || "");
-    const isRejectEntry = /menolak/i.test(entry.note || "");
+  const renderNegotiationBar = () => {
+    if (!isNegotiable && !activeOffer) return null;
 
-    let label = isSellerAction ? "🏷️ Penjual mengusulkan harga" : "💰 Penawaran dari pembeli";
-    if (isAcceptEntry) label = "🤝 Harga disepakati";
-    else if (isRejectEntry) label = "✕ Penawaran ditolak";
+    let tone = "bg-[#F6FAF7] border-[#E8EEEA] text-[#516057]";
+    let text = null;
+    let action = null;
 
-    const bubbleColor = isAcceptEntry
-      ? "bg-emerald-50 border-emerald-200"
-      : isRejectEntry
-      ? "bg-red-50 border-red-200"
-      : isSellerAction
-      ? "bg-purple-50 border-purple-200"
-      : "bg-amber-50 border-amber-200";
-    const labelColor = isAcceptEntry
-      ? "text-emerald-700"
-      : isRejectEntry
-      ? "text-red-600"
-      : isSellerAction
-      ? "text-purple-700"
-      : "text-amber-700";
-
-    const sellerCanAct =
-      isLatest && iAmSeller && entry.actor === "buyer" && ["pending", "counter_buyer"].includes(status);
-    const buyerCanAct = isLatest && iAmBuyer && entry.actor === "seller" && status === "counter_seller";
+    if (!activeOffer) {
+      if (iAmBuyer) {
+        text = "Barang ini bisa dinego. Ajukan harga yang kamu inginkan.";
+        action = !showOfferForm && (
+          <button onClick={() => setShowOfferForm(true)}
+            className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold shrink-0">
+            💰 Tawar Harga
+          </button>
+        );
+      } else {
+        text = "Belum ada tawaran harga dari pembeli ini.";
+      }
+    } else if (offerStatus === "pending" || offerStatus === "counter_buyer") {
+      tone = "bg-amber-50 border-amber-200 text-amber-800";
+      text = iAmBuyer
+        ? `Tawaranmu ${fmtRp(activeOffer.price)} — menunggu respons penjual.`
+        : `Pembeli menawar ${fmtRp(activeOffer.price)} — balas di kartu tawaran di bawah.`;
+    } else if (offerStatus === "counter_seller") {
+      tone = "bg-purple-50 border-purple-200 text-purple-800";
+      text = iAmBuyer
+        ? `Penjual mengusulkan ${fmtRp(activeOffer.price)}. Setujui untuk langsung bayar, atau tawar lagi.`
+        : `Kamu mengusulkan ${fmtRp(activeOffer.price)} — menunggu respons pembeli.`;
+      action = iAmBuyer && (
+        <button onClick={() => handleBuyerAcceptCounter(activeOffer.id)}
+          className="px-3 py-1.5 rounded-lg bg-[#2F7D5B] hover:bg-[#25664a] text-white text-[11px] font-bold shrink-0">
+          Setuju &amp; Bayar {fmtRp(activeOffer.price)} →
+        </button>
+      );
+    } else if (offerStatus === "accepted") {
+      tone = "bg-emerald-50 border-emerald-200 text-emerald-800";
+      text = iAmBuyer
+        ? `Harga deal ${fmtRp(activeOffer.price)}. Selesaikan pembayaran untuk mengamankan barang.`
+        : `Harga deal ${fmtRp(activeOffer.price)} — menunggu pembayaran pembeli.`;
+      action = (
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => handleCancel(activeOffer.id)}
+            className="px-2 py-1.5 rounded-lg text-[11px] font-semibold text-gray-500 hover:bg-white hover:text-red-600">
+            Batalkan Deal
+          </button>
+          {iAmBuyer && (
+            <button onClick={() => goToCheckout(activeOffer)}
+              className="px-3 py-1.5 rounded-lg bg-[#2F7D5B] hover:bg-[#25664a] text-white text-[11px] font-bold">
+              Lanjutkan Pembayaran →
+            </button>
+          )}
+        </div>
+      );
+    }
 
     return (
-      <div key={t.key} className="flex flex-col items-stretch">
-        <div className={`border rounded-2xl p-3.5 ${bubbleColor}`}>
-          <p className={`text-[11px] font-bold mb-1.5 ${labelColor}`}>{label}</p>
-          <p className="text-base font-extrabold text-[#1F2A24] mb-1">{fmtRp(entry.price)}</p>
-          <p className="text-[11px] text-[#718096]">{entry.note}</p>
+      <div className={`mt-2.5 rounded-xl border px-3 py-2 flex items-center justify-between gap-3 ${tone}`}>
+        <p className="text-[11px] font-semibold leading-snug">{text}</p>
+        {action}
+      </div>
+    );
+  };
 
-          {sellerCanAct && (
-            <div className="flex flex-wrap gap-2 mt-3">
+  // ─────────────────────────────────────────────────────────────────────────
+  // Entri riwayat penawaran di timeline
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderOfferEntry = (t) => {
+    const { offer, entry, kind, isLatest } = t;
+    const mine = (entry.actor === "buyer" && iAmBuyer) || (entry.actor === "seller" && iAmSeller);
+
+    // Peristiwa (setuju / tolak / batal / bayar) tampil sebagai baris di tengah
+    if (["accept", "reject", "cancel", "complete"].includes(kind)) {
+      const cfg = {
+        accept: { icon: "🤝", cls: "bg-emerald-50 border-emerald-200 text-emerald-800", text: `${mine ? "Kamu" : entry.actor === "buyer" ? "Pembeli" : "Penjual"} menyetujui harga ${fmtRp(entry.price)}` },
+        reject: { icon: "✕", cls: "bg-red-50 border-red-200 text-red-700", text: mine ? "Kamu menolak tawaran" : "Penjual menolak tawaran" },
+        cancel: { icon: "⊘", cls: "bg-gray-50 border-gray-200 text-gray-600", text: entry.note?.startsWith("Diganti") ? "Tawaran diganti dengan yang baru" : `${mine ? "Kamu" : entry.actor === "buyer" ? "Pembeli" : "Penjual"} membatalkan negosiasi` },
+        complete: { icon: "✅", cls: "bg-emerald-50 border-emerald-200 text-emerald-800", text: entry.cod ? `Pesanan COD ${fmtRp(entry.price)} dibuat — bayar saat bertemu` : `Pembayaran ${fmtRp(entry.price)} berhasil` },
+      }[kind];
+      return (
+        <div key={t.key} className="flex flex-col items-center">
+          <div className={`px-3 py-1.5 rounded-full border text-[11px] font-semibold ${cfg.cls}`}>
+            {cfg.icon} {cfg.text}
+          </div>
+          <span className="text-[10px] text-[#718096] mt-1">{fmtTime(t.time)}</span>
+        </div>
+      );
+    }
+
+    // Tawaran / usulan harga → kartu, rata kanan bila milik sendiri
+    const isSellerEntry = entry.actor === "seller";
+    const label = mine
+      ? isSellerEntry ? "Kamu mengusulkan harga" : "Tawaranmu"
+      : isSellerEntry ? "Penjual mengusulkan harga" : "Tawaran pembeli";
+
+    const sellerCanAct = isLatest && iAmSeller && !isSellerEntry && ["pending", "counter_buyer"].includes(offer.status);
+    const buyerCanAct = isLatest && iAmBuyer && isSellerEntry && offer.status === "counter_seller";
+    const superseded = !isLatest || !OPEN_STATUSES.includes(offer.status);
+
+    return (
+      <div key={t.key} className={`flex flex-col ${mine ? "items-end" : "items-start"}`}>
+        <div className={`w-full max-w-[300px] border rounded-2xl p-3.5 ${
+          isSellerEntry ? "bg-purple-50 border-purple-200" : "bg-amber-50 border-amber-200"
+        } ${mine ? "rounded-tr-sm" : "rounded-tl-sm"} ${superseded && !sellerCanAct && !buyerCanAct ? "opacity-75" : ""}`}>
+          <p className={`text-[11px] font-bold mb-1 ${isSellerEntry ? "text-purple-700" : "text-amber-700"}`}>
+            {isSellerEntry ? "🏷️" : "💰"} {label}
+          </p>
+          <p className="text-lg font-extrabold text-[#1F2A24]">{fmtRp(entry.price)}</p>
+          {itemPrice > 0 && (
+            <p className="text-[10px] text-[#718096]">
+              Harga barang {fmtRp(itemPrice)}
+              {entry.price < itemPrice && ` · hemat ${Math.round((1 - entry.price / itemPrice) * 100)}%`}
+            </p>
+          )}
+
+          {sellerCanAct && counterFor !== offer.id && (
+            <div className="grid grid-cols-3 gap-1.5 mt-3">
               <button onClick={() => handleSellerAccept(offer.id)}
-                className="flex-1 py-1.5 text-[11px] font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-lg">
-                ✓ Terima
+                className="py-1.5 text-[11px] font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-lg">
+                Terima
               </button>
-              <button onClick={() => setShowCounterFor(showCounterFor === offer.id ? null : offer.id)}
-                className="flex-1 py-1.5 text-[11px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg">
-                ↔ Ganti Harga
+              <button onClick={() => { setCounterFor(offer.id); setCounterInput(""); setCounterError(""); }}
+                className="py-1.5 text-[11px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-lg">
+                Usulkan
               </button>
               <button onClick={() => handleSellerReject(offer.id)}
-                className="flex-1 py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg">
-                ✕ Tolak
+                className="py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg">
+                Tolak
               </button>
             </div>
           )}
 
-          {sellerCanAct && showCounterFor === offer.id && (
-            <div className="flex gap-2 mt-2">
-              <div className="relative flex-1">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">Rp</span>
-                <input
-                  type="text" inputMode="numeric" placeholder="0"
-                  value={counterInputVal}
-                  onChange={(e) => {
-                    const raw = e.target.value.replace(/\D/g, "");
-                    setCounterInputVal(raw ? Number(raw).toLocaleString("id-ID") : "");
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && handleSellerCounter(offer.id)}
-                  className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-xs font-bold focus:outline-none focus:border-[#2F7D5B]"
-                  autoFocus
-                />
+          {sellerCanAct && counterFor === offer.id && (
+            <div className="mt-3">
+              <p className="text-[10px] font-semibold text-[#516057] mb-1">Usulkan harga lain:</p>
+              <div className="flex gap-1.5">
+                <PriceInput value={counterInput} onChange={(v) => { setCounterInput(v); setCounterError(""); }}
+                  onEnter={handleSellerCounter} placeholder={Number(itemPrice || 0).toLocaleString("id-ID")} autoFocus />
+                <button onClick={handleSellerCounter}
+                  className="px-3 py-2 text-[11px] font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-lg">
+                  Kirim
+                </button>
+                <button onClick={() => setCounterFor(null)}
+                  className="px-2 py-2 text-[11px] font-semibold text-gray-500 hover:bg-white rounded-lg">
+                  ✕
+                </button>
               </div>
-              <button onClick={() => handleSellerCounter(offer.id)}
-                className="px-3 py-2 text-[11px] font-bold text-white bg-amber-500 hover:bg-amber-600 rounded-lg">
-                Kirim
-              </button>
+              {counterError && <p className="text-[10px] text-red-600 font-semibold mt-1">{counterError}</p>}
             </div>
           )}
 
           {buyerCanAct && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              <button onClick={() => handleBuyerAcceptCounter(offer.id, offer.price)}
-                className="flex-1 py-1.5 text-[11px] font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-lg">
-                ✓ Setuju Harga Ini
+            <div className="grid grid-cols-3 gap-1.5 mt-3">
+              <button onClick={() => handleBuyerAcceptCounter(offer.id)}
+                className="py-1.5 text-[11px] font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-lg">
+                Setuju &amp; Bayar
               </button>
-              <button onClick={() => { setShowOfferInput(true); setOfferInputVal(""); setOfferError(""); }}
-                className="flex-1 py-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg">
-                ↔ Ajukan Harga Lain
+              <button onClick={() => { setShowOfferForm(true); setOfferInput(""); setOfferError(""); }}
+                className="py-1.5 text-[11px] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg">
+                Tawar Lagi
               </button>
-              <button onClick={() => handleBuyerCancelNegotiation(offer.id)}
-                className="flex-1 py-1.5 text-[11px] font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg">
-                ✕ Batalkan
+              <button onClick={() => handleCancel(offer.id)}
+                className="py-1.5 text-[11px] font-bold text-gray-500 bg-white hover:bg-gray-100 rounded-lg border border-gray-200">
+                Batal
               </button>
             </div>
           )}
 
-          {isLatest && status === "accepted" && iAmBuyer && (
-            <button onClick={() => { setDealPrice(offer.price); setDealOfferId(offer.id); setShowDealModal(true); }}
-              className="w-full mt-3 py-1.5 text-[11px] font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-lg">
-              Lanjut Bayar {fmtRp(offer.price)} →
-            </button>
-          )}
-          {isLatest && status === "accepted" && iAmSeller && (
-            <div className="mt-3 text-[11px] font-bold text-emerald-700 bg-white/70 border border-emerald-200 rounded-lg px-3 py-1.5 text-center">
-              Menunggu pembayaran dari pembeli
+          {isLatest && mine && ["pending", "counter_buyer", "counter_seller"].includes(offer.status) && (
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-[10px] font-semibold text-[#718096]">⏳ Menunggu respons {iAmBuyer ? "penjual" : "pembeli"}…</p>
+              {iAmBuyer && (
+                <button onClick={() => handleCancel(offer.id)} className="text-[10px] font-bold text-gray-500 hover:text-red-600">
+                  Batalkan
+                </button>
+              )}
             </div>
-          )}
-          {isLatest && status === "cancelled" && (
-            <div className="mt-3 text-[11px] font-bold text-gray-500 bg-white/70 border border-gray-200 rounded-lg px-3 py-1.5 text-center">
-              Negosiasi dibatalkan
-            </div>
-          )}
-          {isLatest && iAmBuyer && status === "pending" && (
-            <p className="mt-2 text-[11px] font-semibold text-amber-700">⏳ Menunggu respons penjual…</p>
-          )}
-          {isLatest && iAmBuyer && status === "counter_buyer" && (
-            <p className="mt-2 text-[11px] font-semibold text-amber-700">⏳ Menunggu penjual merespons tawaran barumu…</p>
-          )}
-          {isLatest && iAmSeller && status === "counter_seller" && (
-            <p className="mt-2 text-[11px] font-semibold text-purple-700">⏳ Menunggu respons pembeli…</p>
           )}
         </div>
         <span className="text-[10px] text-[#718096] mt-1 px-1">{fmtTime(t.time)}</span>
@@ -479,12 +599,15 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
     );
   };
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Ruang chat (kanan)
+  // ─────────────────────────────────────────────────────────────────────────
   const renderChatRoom = () => {
     if (!currentUser) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <p className="text-sm font-bold text-[#1F2A24] mb-1">Kamu belum masuk</p>
-          <p className="text-xs text-[#718096] mb-4">Masuk dulu untuk mulai mengobrol dengan penjual.</p>
+          <p className="text-xs text-[#718096] mb-4">Masuk dulu untuk mengobrol dan menawar harga.</p>
           <button onClick={() => onNavigate && onNavigate("login")}
             className="px-5 py-2 rounded-xl bg-[#2F7D5B] hover:bg-[#25664a] text-white text-xs font-bold">
             Masuk
@@ -507,7 +630,7 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
           <p className="text-xs text-[#718096] mb-4">
             {conversations.length
               ? "Pilih salah satu percakapan di sebelah kiri."
-              : "Buka halaman barang lalu tekan tombol chat untuk menghubungi penjual."}
+              : "Buka halaman barang lalu tekan “Chat Pemilik” atau “Buka Penawaran”."}
           </p>
           {!conversations.length && (
             <button onClick={onBack}
@@ -539,7 +662,6 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
             </button>
           </div>
 
-          {/* Product preview */}
           {item && (
             <div onClick={openProduct}
               className="bg-[#F6FAF7] border border-[#E8EEEA] rounded-2xl p-2.5 flex items-center gap-3 cursor-pointer hover:border-[#2F7D5B]/40 transition-colors">
@@ -557,13 +679,14 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
                   Bisa Nego
                 </span>
               )}
-              <span className="text-[11px] font-bold text-[#2F7D5B] px-2">&rarr;</span>
             </div>
           )}
+
+          {renderNegotiationBar()}
         </div>
 
-        {/* Messages stream */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 max-h-[420px]">
+        {/* Timeline */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 max-h-[420px] min-h-[220px]">
           {timeline.length === 0 && (
             <div className="h-full flex items-center justify-center text-center py-10">
               <p className="text-xs text-[#718096]">
@@ -572,7 +695,7 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
             </div>
           )}
           {timeline.map((t) => {
-            if (t.type === "offer") return renderOfferBubble(t);
+            if (t.type === "offer") return renderOfferEntry(t);
             const isMe = t.senderId === currentUser.username;
             return (
               <div key={t.key} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
@@ -587,33 +710,24 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input penawaran harga (buyer) */}
-        {isNegotiable && iAmBuyer && showOfferInput && (
+        {/* Form tawar (pembeli) */}
+        {buyerCanOffer && showOfferForm && (
           <div className="px-4 pb-2">
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+              <p className="text-[11px] font-bold text-amber-800 mb-2">
+                {offerStatus === "counter_seller"
+                  ? `Balas usulan penjual (${fmtRp(activeOffer.price)})`
+                  : `Tawar harga · harga barang ${fmtRp(itemPrice)}`}
+              </p>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-amber-700 shrink-0">Tawar:</span>
-                <div className="relative flex-1">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold">Rp</span>
-                  <input
-                    type="text" inputMode="numeric" placeholder="Masukkan harga"
-                    value={offerInputVal}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, "");
-                      setOfferInputVal(raw ? Number(raw).toLocaleString("id-ID") : "");
-                      setOfferError("");
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && handleBuyerSendOffer()}
-                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-amber-300 text-xs font-bold bg-white focus:outline-none focus:border-[#2F7D5B]"
-                    autoFocus
-                  />
-                </div>
+                <PriceInput value={offerInput} onChange={(v) => { setOfferInput(v); setOfferError(""); }}
+                  onEnter={handleBuyerSendOffer} placeholder="Masukkan harga" autoFocus />
                 <button onClick={handleBuyerSendOffer}
                   className="px-4 py-2 text-[11px] font-bold text-white bg-[#2F7D5B] hover:bg-[#25664a] rounded-lg shrink-0">
-                  Kirim
+                  Kirim Tawaran
                 </button>
-                <button onClick={() => { setShowOfferInput(false); setOfferInputVal(""); setOfferError(""); }}
-                  className="px-3 py-2 text-[11px] font-semibold text-gray-500 hover:bg-gray-100 rounded-lg shrink-0">
+                <button onClick={() => { setShowOfferForm(false); setOfferError(""); }}
+                  className="px-3 py-2 text-[11px] font-semibold text-gray-500 hover:bg-white rounded-lg shrink-0">
                   Batal
                 </button>
               </div>
@@ -622,7 +736,7 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
           </div>
         )}
 
-        {/* Bottom: quick actions + input teks */}
+        {/* Bawah: aksi cepat + input teks */}
         <div className="p-4 border-t border-[#EAEFEA]">
           <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
             <button onClick={() => setInputText("Bisa COD di area mana saja Kak?")}
@@ -632,12 +746,16 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
               </svg>
               Tentukan titik COD
             </button>
-
-            {isNegotiable && iAmBuyer && !["pending", "counter_buyer", "accepted"].includes(activeOffer?.status) && (
-              <button
-                onClick={() => { setShowOfferInput(true); setOfferInputVal(""); setOfferError(""); }}
-                className="px-3 py-1.5 rounded-full border border-amber-300 bg-amber-50 hover:bg-amber-100 text-[11px] font-bold text-amber-700 whitespace-nowrap flex items-center gap-1.5 transition-colors">
-                💰 Ajukan Penawaran
+            {iAmBuyer && (
+              <button onClick={() => setInputText(`Halo Kak, apakah ${item?.title || "barang ini"} masih tersedia?`)}
+                className="px-3 py-1.5 rounded-full border border-[#DCE6DF] bg-white hover:bg-gray-50 text-[11px] font-medium text-[#1F2A24] whitespace-nowrap transition-colors">
+                Masih tersedia?
+              </button>
+            )}
+            {buyerCanOffer && !showOfferForm && (
+              <button onClick={() => { setShowOfferForm(true); setOfferInput(""); setOfferError(""); }}
+                className="px-3 py-1.5 rounded-full border border-amber-300 bg-amber-50 hover:bg-amber-100 text-[11px] font-bold text-amber-700 whitespace-nowrap transition-colors">
+                💰 {offerStatus === "counter_seller" ? "Tawar Lagi" : "Tawar Harga"}
               </button>
             )}
           </div>
@@ -658,18 +776,23 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
     );
   };
 
+  const dealOffer = dealModalOffer ? getOffers().find((o) => o.id === dealModalOffer) : null;
+
   return (
     <div className="min-h-screen bg-[#FBFDFB] font-plusJakartaSans text-[#1F2A24] flex flex-col">
 
       {/* NAVBAR */}
       <header className="w-full border-b border-[#EAEFEA] bg-white sticky top-0 z-40">
         <div className="max-w-[1140px] mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
-          <button type="button" onClick={onBack} className="flex items-center gap-2.5 group focus:outline-none">
-            <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] shadow-[0_6px_16px_rgba(47,125,91,0.22)] w-[35px] h-[35px] transition-transform group-hover:scale-105">
-              <span className="text-[#FFF] text-[19px] font-extrabold leading-none">T</span>
-            </div>
-            <span className="text-[#1F2A24] text-[21px] font-extrabold tracking-[-0.0333em]">TradeMe</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <BackButton onClick={onGoBack} />
+            <button type="button" onClick={onBack} className="flex items-center gap-2.5 group focus:outline-none">
+              <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] shadow-[0_6px_16px_rgba(47,125,91,0.22)] w-[35px] h-[35px] transition-transform group-hover:scale-105">
+                <span className="text-[#FFF] text-[19px] font-extrabold leading-none">T</span>
+              </div>
+              <span className="text-[#1F2A24] text-[21px] font-extrabold tracking-[-0.0333em]">TradeMe</span>
+            </button>
+          </div>
           <button type="button" onClick={onBack} className="p-2 text-[#1F2A24] hover:bg-gray-100 rounded-lg transition-colors focus:outline-none">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -685,7 +808,7 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
 
         <div className="bg-white rounded-3xl border border-[#E2E8F0] shadow-xs overflow-hidden flex flex-col md:flex-row flex-1 min-h-[600px]">
 
-          {/* Kiri: Daftar percakapan */}
+          {/* Kiri: daftar percakapan */}
           <div className="w-full md:w-[300px] border-b md:border-b-0 md:border-r border-[#E2E8F0] p-4 flex flex-col bg-[#FDFEFE] shrink-0">
             <div className="relative mb-4">
               <input type="text" placeholder="Cari percakapan" value={search} onChange={(e) => setSearch(e.target.value)}
@@ -707,6 +830,7 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
                 const name = isBuyerSide ? c.sellerName : c.buyerName;
                 const last = lastActivity(c);
                 const unread = active ? 0 : countUnread(c, currentUser.username);
+                const openNego = offersForConversation(c).some((o) => OPEN_STATUSES.includes(o.status));
                 return (
                   <button type="button" key={c.id} onClick={() => selectConversation(c.id)}
                     className={`w-full text-left p-3 rounded-2xl flex items-center justify-between transition-colors
@@ -718,7 +842,9 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4 className="font-bold text-xs text-[#1F2A24] truncate">{name}</h4>
-                        <p className="text-[10px] text-[#2F7D5B] font-semibold truncate">{c.product?.title}</p>
+                        <p className="text-[10px] text-[#2F7D5B] font-semibold truncate">
+                          {openNego && "💰 "}{c.product?.title}
+                        </p>
                         <p className={`text-[11px] truncate mt-0.5 ${unread ? "text-[#1F2A24] font-semibold" : "text-[#718096]"}`}>
                           {last.text}
                         </p>
@@ -738,7 +864,7 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
             </div>
           </div>
 
-          {/* Kanan: Chat room */}
+          {/* Kanan: ruang chat */}
           <div className="flex-1 flex flex-col">{renderChatRoom()}</div>
         </div>
       </main>
@@ -767,10 +893,11 @@ export default function HalamanChat({ product, onBack, onNavigate, onLogout, cur
       </footer>
 
       <DealConfirmModal
-        open={showDealModal}
-        dealPrice={dealPrice}
-        onCancel={handleDealCancel}
-        onProceed={handleDealProceed}
+        open={!!dealOffer && dealOffer.status === "accepted"}
+        dealPrice={dealOffer?.price}
+        onLater={() => setDealModalOffer(null)}
+        onCancelDeal={() => handleCancel(dealOffer.id)}
+        onProceed={() => goToCheckout(dealOffer)}
       />
     </div>
   );

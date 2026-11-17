@@ -1,21 +1,51 @@
 import React from "react";
+import BackButton from "./components/BackButton";
 
-export default function HalamanSuksesPembayaran({ product, onBack, onNavigate, onLogout }) {
+const fmtRp = (n) => "Rp" + Number(n || 0).toLocaleString("id-ID");
+
+function fmtDateTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString("id-ID", {
+    weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+export default function HalamanSuksesPembayaran({ product, paymentInfo, onBack, onGoBack, onNavigate, onLogout }) {
   const item = product || {
     title: "Sepeda Kota Vintage",
     priceText: "Rp750.000",
   };
+
+  const isCOD = !!paymentInfo?.cod;
+  const totalText = paymentInfo?.total ? fmtRp(paymentInfo.total) : item.priceText || fmtRp(item.price);
+  // Langkah transaksi: COD dibayar saat bertemu, Delivery dibayar di muka (escrow)
+  const steps = isCOD
+    ? [
+        { label: "Dibuat", done: true },
+        { label: "Bertemu", done: false },
+        { label: "Bayar & cek", done: false },
+        { label: "Selesai", done: false },
+      ]
+    : [
+        { label: "Dibuat", done: true },
+        { label: "Dibayar", done: true },
+        { label: "Dikirim", done: false },
+        { label: "Diterima", done: false },
+        { label: "Selesai", done: false },
+      ];
 
   return (
     <div className="min-h-screen bg-[#FBFDFB] font-plusJakartaSans text-[#1F2A24] flex flex-col justify-between">
       {/* ================= NAVBAR ================= */}
       <header className="w-full border-b border-[#EAEFEA] bg-white sticky top-0 z-40">
         <div className="max-w-[1140px] mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+          <BackButton onClick={onGoBack} />
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => onNavigate && onNavigate("home")}
             className="flex items-center gap-2.5 text-left group focus:outline-none"
-            aria-label="Kembali ke beranda"
+            aria-label="Ke beranda"
           >
             <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] shadow-[0_6px_16px_rgba(47,125,91,0.22)] w-[35px] h-[35px] transition-transform group-hover:scale-105">
               <span className="text-[#FFF] text-[19px] font-extrabold leading-none tracking-[-0.0368em]">
@@ -26,6 +56,7 @@ export default function HalamanSuksesPembayaran({ product, onBack, onNavigate, o
               TradeMe
             </span>
           </button>
+          </div>
 
           <button
             type="button"
@@ -57,12 +88,23 @@ export default function HalamanSuksesPembayaran({ product, onBack, onNavigate, o
 
           {/* Heading */}
           <h1 className="text-3xl sm:text-[38px] font-bold text-[#1F2A24] tracking-tight mb-3">
-            Pembayaran berhasil
+            {isCOD ? "Pesanan COD dikonfirmasi" : "Pembayaran berhasil"}
           </h1>
 
           {/* Subtitle */}
           <p className="text-[#66736C] text-sm sm:text-[15px] leading-relaxed max-w-lg mx-auto mb-10">
-            Dana <span className="font-bold text-[#1F2A24]">{item.priceText || "Rp750.000"}</span> telah diamankan. Selesaikan serah terima barang untuk melanjutkan transaksi.
+            {isCOD ? (
+              <>
+                Siapkan <span className="font-bold text-[#1F2A24]">{totalText}</span> dan bayar langsung ke penjual saat bertemu
+                {paymentInfo?.meetingPoint?.label && <> di <span className="font-bold text-[#1F2A24]">{paymentInfo.meetingPoint.label}</span></>}
+                {paymentInfo?.meetingTime && <> pada <span className="font-bold text-[#1F2A24]">{fmtDateTime(paymentInfo.meetingTime)}</span></>}
+                . Periksa barang dulu sebelum membayar.
+              </>
+            ) : (
+              <>
+                Dana <span className="font-bold text-[#1F2A24]">{totalText}</span> telah diamankan. Selesaikan serah terima barang untuk melanjutkan transaksi.
+              </>
+            )}
           </p>
 
           {/* Stepper Progress Bar */}
@@ -70,56 +112,18 @@ export default function HalamanSuksesPembayaran({ product, onBack, onNavigate, o
             <div className="relative flex items-center justify-between">
               {/* Connecting Line */}
               <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-[#D5E5DC] z-0"></div>
-
-              {/* Step 1: Dibuat (Done) */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#2F7D5B] text-white flex items-center justify-center font-bold text-xs shadow-sm ring-4 ring-white">
-                  ✓
+              {steps.map((step, idx) => (
+                <div key={step.label} className="relative z-10 flex flex-col items-center">
+                  <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${
+                    step.done ? "bg-[#2F7D5B] text-white shadow-sm" : "bg-[#E5EAE7] text-[#718096]"
+                  }`}>
+                    {step.done ? "✓" : idx + 1}
+                  </div>
+                  <span className={`text-[11px] sm:text-xs mt-2 ${step.done ? "font-bold text-[#2F7D5B]" : "font-medium text-[#718096]"}`}>
+                    {step.label}
+                  </span>
                 </div>
-                <span className="text-[11px] sm:text-xs font-bold text-[#2F7D5B] mt-2">
-                  Dibuat
-                </span>
-              </div>
-
-              {/* Step 2: Dibayar (Done) */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#2F7D5B] text-white flex items-center justify-center font-bold text-xs shadow-sm ring-4 ring-white">
-                  ✓
-                </div>
-                <span className="text-[11px] sm:text-xs font-bold text-[#2F7D5B] mt-2">
-                  Dibayar
-                </span>
-              </div>
-
-              {/* Step 3: COD (Next) */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#E5EAE7] text-[#718096] flex items-center justify-center font-bold text-xs ring-4 ring-white">
-                  3
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-[#718096] mt-2">
-                  COD
-                </span>
-              </div>
-
-              {/* Step 4: Diterima */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#E5EAE7] text-[#718096] flex items-center justify-center font-bold text-xs ring-4 ring-white">
-                  4
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-[#718096] mt-2">
-                  Diterima
-                </span>
-              </div>
-
-              {/* Step 5: Selesai */}
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#E5EAE7] text-[#718096] flex items-center justify-center font-bold text-xs ring-4 ring-white">
-                  5
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-[#718096] mt-2">
-                  Selesai
-                </span>
-              </div>
+              ))}
             </div>
           </div>
 
@@ -127,7 +131,7 @@ export default function HalamanSuksesPembayaran({ product, onBack, onNavigate, o
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
               type="button"
-              onClick={() => onNavigate && onNavigate("home")}
+              onClick={() => onNavigate && onNavigate("profile")}
               className="py-3.5 px-8 rounded-xl bg-[#2F7D5B] hover:bg-[#25664a] active:scale-[0.99] text-white font-bold text-sm sm:text-base shadow-md shadow-[#2F7D5B]/25 hover:shadow-lg transition-all cursor-pointer"
             >
               Lihat Riwayat Transaksi

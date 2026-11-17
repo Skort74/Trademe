@@ -1,15 +1,17 @@
 import React, { useState, useRef } from 'react';
+import BackButton from './components/BackButton';
+import LocationPicker from './components/LocationPicker';
 
-const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
+const HalamanAjukanTukar = ({ product, onGoBack, onNavigate }) => {
   const [pesan, setPesan] = useState('');
   const [manualNamaBarang, setManualNamaBarang] = useState('');
   const [manualDeskripsi, setManualDeskripsi] = useState('');
   const [manualKondisi, setManualKondisi] = useState('Baik');
   const [previewImage, setPreviewImage] = useState(null);
   
-  // State Lokasi (Ketik & Hasil Konfirmasi)
-  const [inputLokasi, setInputLokasi] = useState('');
-  const [lokasiTerkonfirmasi, setLokasiTerkonfirmasi] = useState('');
+  // Lokasi pertemuan COD ({ label, query } dari Google Maps)
+  const [lokasiPertemuan, setLokasiPertemuan] = useState(null);
+  const [formError, setFormError] = useState('');
 
   // State untuk Pop-up Sukses
   const [isSuccess, setIsSuccess] = useState(false);
@@ -43,7 +45,7 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
       reader.onloadend = () => setPreviewImage(reader.result);
       reader.readAsDataURL(file);
     } else {
-      alert("Mohon unggah file gambar.");
+      setFormError("Mohon unggah file gambar (JPG, PNG, WEBP).");
     }
   };
 
@@ -70,27 +72,17 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
     if (file) processFile(file);
   };
 
-  // -- LOGIKA MAPS & VALIDASI --
-  const handleKonfirmasiLokasi = (e) => {
-    e.preventDefault();
-    if (!inputLokasi.trim()) {
-      alert("Silakan ketik nama lokasi terlebih dahulu.");
-      return;
-    }
-    setLokasiTerkonfirmasi(inputLokasi);
-    alert("Lokasi berhasil dikunci!");
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!previewImage) {
-      alert("Silakan unggah foto barangmu terlebih dahulu.");
+      setFormError("Silakan unggah foto barangmu terlebih dahulu.");
       return;
     }
-    if (!lokasiTerkonfirmasi) {
-      alert("Silakan cari dan klik 'Gunakan Lokasi Ini' pada peta terlebih dahulu.");
+    if (!lokasiPertemuan) {
+      setFormError("Pilih lokasi pertemuan di peta, lalu tekan 'Gunakan Lokasi Ini'.");
       return;
     }
+    setFormError('');
     
     // Di sini Anda bisa menambahkan logika untuk mengirim data ke API/Backend nanti
     // const dataAjuan = { ... };
@@ -100,18 +92,23 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
     setIsSuccess(true);
   };
 
-  // URL Google Maps untuk Iframe
-  const mapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(inputLokasi || 'Surabaya')}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] py-8 px-4 font-sans text-gray-800">
-      <div className="max-w-3xl mx-auto">
-        
-        <div className="mb-8">
-          <button onClick={onBack} type="button" className="text-sm font-semibold text-[#2F7D5B] hover:text-[#25684B] mb-4 flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" /></svg>
-            Kembali ke beranda
+    <div className="min-h-screen bg-[#FDFDFD] font-sans text-gray-800">
+      <header className="w-full border-b border-[#EAEFEA] bg-white sticky top-0 z-40">
+        <div className="max-w-[1140px] mx-auto px-4 sm:px-6 h-[72px] flex items-center gap-3">
+          <BackButton onClick={onGoBack} />
+          <button type="button" onClick={() => onNavigate && onNavigate('home')} className="flex items-center gap-2.5 group focus:outline-none" aria-label="Ke beranda">
+            <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] w-[35px] h-[35px] transition-transform group-hover:scale-105">
+              <span className="text-white text-[19px] font-extrabold leading-none">T</span>
+            </div>
+            <span className="text-[#1F2A24] text-[21px] font-extrabold tracking-tight">TradeMe</span>
           </button>
+        </div>
+      </header>
+
+      <div className="max-w-3xl mx-auto py-8 px-4">
+        <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-[#111827] tracking-tight mb-2">Ajukan Tukar Barang</h1>
         </div>
 
@@ -199,43 +196,13 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
           {/* KARTU LOKASI PERTEMUAN (MAPS & VALIDASI) */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
             <h3 className="font-bold text-gray-800 mb-1">Lokasi Pertemuan (COD)</h3>
-            <p className="text-xs text-gray-500 mb-3">Ketik nama tempat, lalu klik "Gunakan Lokasi Ini" untuk mengunci titik temu.</p>
-            
-            <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <input 
-                type="text" 
-                placeholder="Contoh: Taman Bungkul Surabaya" 
-                value={inputLokasi} 
-                onChange={(e) => setInputLokasi(e.target.value)} 
-                className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:border-[#2F7D5B]" 
-              />
-              <button 
-                type="button" 
-                onClick={handleKonfirmasiLokasi}
-                className="px-5 py-2.5 bg-[#EAF5EF] text-[#2F7D5B] border border-[#2F7D5B] rounded-xl font-bold text-sm hover:bg-[#2F7D5B] hover:text-white transition-colors"
-              >
-                Gunakan Lokasi Ini
-              </button>
-            </div>
-
-            {lokasiTerkonfirmasi && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-green-800 text-sm font-semibold">
-                <span>✅</span> Lokasi Terpilih: {lokasiTerkonfirmasi}
-              </div>
-            )}
-
-            <div className="w-full h-64 rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
-              <iframe 
-                title="Peta Lokasi"
-                width="100%" 
-                height="100%" 
-                frameBorder="0" 
-                style={{ border: 0 }}
-                src={mapUrl}
-                allowFullScreen
-              ></iframe>
-            </div>
-            <p className="text-[11px] text-center text-gray-400 mt-2">Geser peta atau ganti teks di atas untuk mencari titik temu.</p>
+            <p className="text-xs text-gray-500 mb-3">Cari tempat umum di sekitar {barangTarget.lokasi}, periksa di peta, lalu tekan "Gunakan Lokasi Ini".</p>
+            <LocationPicker
+              value={lokasiPertemuan}
+              onChange={(v) => { setLokasiPertemuan(v); setFormError(''); }}
+              defaultQuery={barangTarget.lokasi}
+              mapHeight={256}
+            />
           </div>
 
           {/* PESAN */}
@@ -243,6 +210,10 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
             <h3 className="font-bold text-gray-800 mb-1">Pesan Tambahan (Opsional)</h3>
             <textarea placeholder="Halo Mas Budi, saya tertarik menukar meja saya..." value={pesan} onChange={(e) => setPesan(e.target.value)} className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:border-[#2F7D5B] resize-none" rows="2" />
           </div>
+
+          {formError && (
+            <p className="text-sm font-semibold text-red-600 text-center">{formError}</p>
+          )}
 
           <button type="submit" className="w-full bg-[#2F7D5B] hover:bg-[#25684B] text-white font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2">
             Kirim Pengajuan Tukar

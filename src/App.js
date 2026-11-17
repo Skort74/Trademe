@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import TradeMeHome from "./TradeMeHome";
 import HalamanDetailLelang from "./HalamanDetailLelang";
 import HalamanLogin from "./HalamanLogin";
@@ -20,17 +20,71 @@ import {
 } from "./utils/auth";
 
 
+// Halaman terakhir disimpan per tab agar refresh tidak kembali ke login
+const NAV_STATE_KEY = "treadme_nav_state";
+const KNOWN_PAGES = [
+  "home", "detail", "lelang_detail", "ajukan_tukar", "checkout", "payment_success",
+  "chat", "admin", "donasi", "unggah", "profile",
+];
+
+function readNavState() {
+  try {
+    const raw = sessionStorage.getItem(NAV_STATE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Tentukan halaman awal saat aplikasi dimuat / di-refresh */
+function getInitialNav() {
+  const user = getCurrentSession();
+  if (window.location.pathname === "/unggah") {
+    return { page: "unggah", params: {}, history: [] };
+  }
+  // Belum login → halaman login
+  if (!user) return { page: "login", params: {}, history: [] };
+
+  // Sudah login → lanjutkan halaman terakhir di tab ini
+  const saved = readNavState();
+  const allowed = (p) => KNOWN_PAGES.includes(p) && (p !== "admin" || user.role === "admin");
+  if (saved && allowed(saved.page)) {
+    return {
+      page: saved.page,
+      params: saved.params || {},
+      history: Array.isArray(saved.history) ? saved.history.filter((h) => allowed(h.page)) : [],
+    };
+  }
+  return { page: user.role === "admin" ? "admin" : "home", params: {}, history: [] };
+}
+
 export default function App() {
-  const [currentPage, setCurrentPage] = useState(() => {
-    return window.location.pathname === "/unggah" ? "unggah" : "login";
-  });
+  const [initialNav] = useState(getInitialNav);
+  const [currentPage, setCurrentPage] = useState(initialNav.page);
 
   const [currentUser, setCurrentUser] = useState(() => getCurrentSession());
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [navParams, setNavParams] = useState({});
+  const [selectedProduct, setSelectedProduct] = useState(initialNav.params.product || null);
+  const [navParams, setNavParams] = useState(initialNav.params);
+  // Riwayat halaman untuk tombol "Kembali" ({ page, params })
+  const [history, setHistory] = useState(initialNav.history);
 
-  // NAVIGASI HALAMAN
-  const handleNavigate = (page, params = {}) => {
+  // Simpan posisi halaman selama sudah login (dipulihkan saat refresh)
+  useEffect(() => {
+    try {
+      if (!currentUser || ["login", "register"].includes(currentPage)) {
+        sessionStorage.removeItem(NAV_STATE_KEY);
+        return;
+      }
+      sessionStorage.setItem(
+        NAV_STATE_KEY,
+        JSON.stringify({ page: currentPage, params: navParams, history })
+      );
+    } catch (e) {
+      // sessionStorage penuh / tidak tersedia → abaikan, cukup tidak dipulihkan
+    }
+  }, [currentUser, currentPage, navParams, history]);
+
+  const showPage = (page, params) => {
     setNavParams(params);
     if (params.product) {
       setSelectedProduct(params.product);
@@ -39,21 +93,44 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // NAVIGASI HALAMAN
+  // options.replace = true → halaman saat ini tidak dicatat di riwayat
+  // (mis. checkout → pembayaran berhasil, agar "Kembali" tidak membuka checkout lagi)
+  const handleNavigate = (page, params = {}, options = {}) => {
+    const AUTH_PAGES = ["login", "register"];
+    if (page === "home") {
+      setHistory([]); // beranda adalah titik awal
+    } else if (!options.replace && currentPage !== page) {
+      const keep = !AUTH_PAGES.includes(currentPage) || AUTH_PAGES.includes(page);
+      if (keep) setHistory((h) => [...h, { page: currentPage, params: navParams }].slice(-30));
+    } else if (!options.replace && currentPage === page) {
+      setHistory((h) => [...h, { page: currentPage, params: navParams }].slice(-30));
+    }
+    showPage(page, params);
+  };
+
+  // KEMBALI KE HALAMAN SEBELUMNYA
+  const handleGoBack = () => {
+    const prev = history[history.length - 1];
+    if (!prev) return showPage("home", {});
+    setHistory((h) => h.slice(0, -1));
+    showPage(prev.page, prev.params || {});
+  };
+  const onGoBack = history.length > 0 ? handleGoBack : undefined;
+
   // LOGIN BERHASIL
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    if (user && user.role === "admin") {
-      handleNavigate("admin");
-    } else {
-      handleNavigate("home");
-    }
+    setHistory([]);
+    showPage(user && user.role === "admin" ? "admin" : "home", {});
   };
 
   // LOGOUT
   const handleLogout = () => {
     clearCurrentSession();
     setCurrentUser(null);
-    handleNavigate("login", {
+    setHistory([]);
+    showPage("login", {
       initialNotice:
         "Anda telah keluar. Silakan masukkan kredensial Anda untuk masuk kembali.",
     });
@@ -83,6 +160,7 @@ export default function App() {
       {/* 1. HALAMAN LOGIN */}
       {currentPage === "login" && (
         <HalamanLogin
+          onGoBack={onGoBack}
           onNavigate={handleNavigate}
           onLoginSuccess={handleLoginSuccess}
           initialEmail={navParams.initialEmail || ""}
@@ -93,6 +171,7 @@ export default function App() {
       {/* 2. HALAMAN BUAT AKUN */}
       {currentPage === "register" && (
         <HalamanBuatAkun
+          onGoBack={onGoBack}
           onNavigate={handleNavigate}
           initialEmail={navParams.initialEmail || ""}
         />
@@ -111,6 +190,7 @@ export default function App() {
       {/* 4. DETAIL BARANG */}
       {currentPage === "detail" && (
         <DetailCard
+          onGoBack={onGoBack}
           product={selectedProduct || navParams.product}
           onBack={() => handleNavigate("home")}
           onNavigate={handleNavigate}
@@ -124,6 +204,7 @@ export default function App() {
       {/* 5. DETAIL LELANG */}
       {currentPage === "lelang_detail" && (
         <HalamanDetailLelang
+          onGoBack={onGoBack}
           product={selectedProduct || navParams.product}
           onBack={() => handleNavigate("home")}
           onNavigate={handleNavigate}
@@ -135,6 +216,7 @@ export default function App() {
       {/* 6. AJUKAN TUKAR */}
       {currentPage === "ajukan_tukar" && (
         <HalamanAjukanTukar
+          onGoBack={onGoBack}
           product={selectedProduct || navParams.product}
           onBack={() =>
             handleNavigate("detail", {
@@ -150,6 +232,7 @@ export default function App() {
       {/* 7. CHECKOUT */}
       {currentPage === "checkout" && (
         <HalamanCheckout
+          onGoBack={onGoBack}
           product={selectedProduct || navParams.product}
           onBack={() =>
             handleNavigate("detail", {
@@ -165,6 +248,8 @@ export default function App() {
       {/* 8. PEMBAYARAN BERHASIL */}
       {currentPage === "payment_success" && (
         <HalamanSuksesPembayaran
+          onGoBack={onGoBack}
+          paymentInfo={navParams.paymentInfo}
           product={selectedProduct || navParams.product}
           onBack={() => handleNavigate("home")}
           onNavigate={handleNavigate}
@@ -176,7 +261,10 @@ export default function App() {
       {/* 9. HALAMAN CHAT */}
       {currentPage === "chat" && (
         <HalamanChat
-          product={selectedProduct || navParams.product}
+          onGoBack={onGoBack}
+          product={navParams.product}
+          openOffer={!!navParams.openOffer}
+          initialConversationId={navParams.conversationId}
           onBack={() => handleNavigate("home")}
           onNavigate={handleNavigate}
           currentUser={currentUser}
@@ -187,6 +275,7 @@ export default function App() {
       {/* 10. PANEL ADMIN */}
       {currentPage === "admin" && (
         <PanelAdminBarang
+          onGoBack={onGoBack}
           onNavigate={handleNavigate}
           currentUser={currentUser}
           onLogout={handleLogout}
@@ -196,6 +285,7 @@ export default function App() {
       {/* 11. HALAMAN DONASI */}
       {currentPage === "donasi" && (
         <HalamanDonasi
+          onGoBack={onGoBack}
           onBack={() => handleNavigate("home")}
           onNavigate={handleNavigate}
           currentUser={currentUser}
@@ -206,6 +296,7 @@ export default function App() {
       {/* 12. HALAMAN UNGGAH BARANG */}
       {currentPage === "unggah" && (
         <UnggahBarang
+          onGoBack={onGoBack}
           onNavigate={handleNavigate}
           currentUser={currentUser}
           onLogout={handleLogout}
@@ -215,6 +306,8 @@ export default function App() {
       {/* 13. HALAMAN PROFIL */}
       {currentPage === "profile" && (
         <HalamanProfil
+          onGoBack={onGoBack}
+          openAddressEditor={!!navParams.editAddress}
           onNavigate={handleNavigate}
           currentUser={currentUser}
           onUpdateProfile={handleUpdateProfile}

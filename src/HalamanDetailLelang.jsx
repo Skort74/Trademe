@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { auctionBids, auctionResults, STORE_EVENT } from './utils/adminStore';
 import { getSellerOf } from './utils/chat';
+import BackButton from './components/BackButton';
 
 // Kelipatan default bila barang belum punya pengaturan kelipatan dari admin
 const DEFAULT_INCREMENT = 15000;
@@ -19,7 +20,7 @@ function fmtBidTime(iso) {
   return `${d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}, ${time}`;
 }
 
-const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogout }) => {
+const HalamanDetailLelang = ({ product, onBack, onGoBack, onNavigate, currentUser, onLogout }) => {
   const parsedPrice = Number(String(product?.priceText || '').replace(/\D/g, ''));
 
   const item = {
@@ -174,12 +175,13 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
       <header className="bg-white border-b border-gray-100 sticky top-0 z-30">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 h-[72px] flex items-center justify-between gap-4">
           
-          {/* Logo & Tombol Kembali */}
-          <div className="flex items-center gap-4">
+          {/* Tombol Kembali & Logo */}
+          <div className="flex items-center gap-3">
+            <BackButton onClick={onGoBack} />
             <button 
-              onClick={onBack || (() => onNavigate && onNavigate("home"))}
+              onClick={() => onNavigate && onNavigate("home")}
               className="flex items-center gap-2.5 text-gray-800 hover:opacity-80 transition-opacity"
-              title="Kembali ke Beranda"
+              title="Ke beranda"
             >
               <div className="w-9 h-9 rounded-xl bg-[#2F7D5B] text-white font-black flex items-center justify-center text-lg shadow-sm">
                 T
@@ -246,19 +248,6 @@ const HalamanDetailLelang = ({ product, onBack, onNavigate, currentUser, onLogou
       {/* ================= KONTEN UTAMA DUA KOLOM ================= */}
       <main className="max-w-[1240px] mx-auto px-4 sm:px-6 py-8">
         
-        {/* Tombol kembali mobile / breadcrumb */}
-        <div className="mb-6">
-          <button 
-            onClick={onBack || (() => onNavigate && onNavigate("home"))}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-[#2F7D5B] transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            Kembali ke Beranda
-          </button>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
           
           {/* ================= KOLOM KIRI: FOTO & DESKRIPSI ================= */}

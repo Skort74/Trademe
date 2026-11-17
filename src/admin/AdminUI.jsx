@@ -179,6 +179,7 @@ const STATUS_COLOR = {
   Ditinjau: "blue",
   Menunggu: "amber",
   "Menunggu Pembayaran": "amber",
+  "Menunggu COD": "amber",
   "Menunggu Verifikasi": "amber",
   Terbuka: "amber",
   Berlangsung: "blue",

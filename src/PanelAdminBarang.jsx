@@ -8,6 +8,7 @@ import AdminVerifPenerima from "./admin/AdminVerifPenerima";
 import AdminVerifLelang from "./admin/AdminVerifLelang";
 import AdminPemenang from "./admin/AdminPemenang";
 import { initials } from "./admin/AdminUI";
+import BackButton from "./components/BackButton";
 import { getAdminItems, saveAdminItems, ADMIN_ITEMS_KEY, STORE_EVENT } from "./utils/adminStore";
 
 // eslint-disable-next-line no-unused-vars -- dipakai di blok preset gambar yang sedang dinonaktifkan
@@ -19,7 +20,7 @@ const PRESET_IMAGES = [
   { label: "Kursi Cafe", url: "/images/kursi-cafe.jpg" },
 ];
 
-export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) {
+export default function PanelAdminBarang({ onNavigate, onGoBack, currentUser, onLogout }) {
   const [activeMenu, setActiveMenu] = useState("ringkasan");
   const [selectedId, setSelectedId] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -381,6 +382,8 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
         <div className="max-w-[1180px]">
           {/* Top Header */}
           <header className="flex justify-between items-start mb-6">
+            <div className="flex items-start gap-3">
+            <BackButton onClick={onGoBack} className="mt-1" />
             <div>
               <p className="text-[#2F7D5B] text-[11px] font-extrabold tracking-[0.163em] uppercase">
                 PUSAT KENDALI
@@ -388,6 +391,7 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
               <h1 className="text-[#1F2A24] text-[30px] font-bold leading-tight mt-1">
                 {activeLabel}
               </h1>
+            </div>
             </div>
 
             {/* Admin Profile */}

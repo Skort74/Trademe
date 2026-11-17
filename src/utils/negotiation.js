@@ -1,40 +1,81 @@
 // src/utils/negotiation.js
-// Storage helper untuk fitur negosiasi / tawar-menawar TradeMe
+// Storage helper untuk fitur negosiasi / tawar-menawar TradeMe.
+// Seluruh negosiasi dijalankan lewat halaman Chat; data disimpan di localStorage.
+//
+// Status penawaran:
+//   pending        → pembeli mengajukan harga, menunggu penjual
+//   counter_seller → penjual mengusulkan harga lain, menunggu pembeli
+//   counter_buyer  → pembeli membalas dengan harga baru, menunggu penjual
+//   accepted       → harga disepakati, menunggu pembayaran pembeli
+//   completed      → pembeli sudah membayar harga deal
+//   rejected       → penjual menolak
+//   cancelled      → dibatalkan (oleh pembeli / penjual)
 
-const STORAGE_KEY = "treadme_offers";
+export const OFFERS_STORAGE_KEY = "treadme_offers";
+export const ACTIVE_STATUSES = ["pending", "counter_seller", "counter_buyer", "accepted"];
 
 /** Ambil semua penawaran dari localStorage */
 export function getOffers() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(OFFERS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
     return [];
   }
 }
 
-/** Simpan array penawaran ke localStorage */
 function saveOffers(offers) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(offers));
+    localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(offers));
   } catch (e) {}
 }
 
-/**
- * Buat penawaran baru oleh buyer.
- * @param {object} param0
- * @param {number|string} param0.itemId
- * @param {string} param0.buyerId   - username buyer
- * @param {string} param0.buyerName - nama lengkap buyer
- * @param {number} param0.price     - harga yang ditawarkan
- * @param {string} param0.itemTitle - judul barang
- * @returns penawaran baru
- */
-export function createOffer({ itemId, buyerId, buyerName, price, itemTitle }) {
+const rp = (n) => `Rp${Number(n || 0).toLocaleString("id-ID")}`;
+const sameItem = (a, b) => String(a) === String(b);
+
+/** Ubah satu penawaran + tambahkan entri riwayat */
+function updateOffer(offerId, patch, entry) {
   const offers = getOffers();
-  // Hapus penawaran lama dari buyer yang sama untuk item yang sama
-  const filtered = offers.filter(
-    (o) => !(o.itemId === itemId && o.buyerId === buyerId)
+  const idx = offers.findIndex((o) => o.id === offerId);
+  if (idx === -1) return null;
+  const now = new Date().toISOString();
+  offers[idx] = {
+    ...offers[idx],
+    ...patch,
+    updatedAt: now,
+    history: entry ? [...(offers[idx].history || []), { ...entry, time: now }] : offers[idx].history,
+  };
+  saveOffers(offers);
+  return offers[idx];
+}
+
+/**
+ * Jenis entri riwayat. Entri baru menyimpan `kind`; untuk data lama
+ * (sebelum ada `kind`) jenisnya ditebak dari teks catatan.
+ * @returns {"offer"|"counter"|"accept"|"reject"|"cancel"|"complete"}
+ */
+export function entryKind(h) {
+  if (h.kind) return h.kind;
+  const note = String(h.note || "");
+  if (/menerima harga/i.test(note)) return "accept";
+  if (/menolak/i.test(note)) return "reject";
+  if (h.actor === "seller") return "counter";
+  return "offer";
+}
+
+/** Pembeli membuat penawaran baru. Penawaran aktif sebelumnya otomatis dibatalkan (riwayat tetap ada). */
+export function createOffer({ itemId, buyerId, buyerName, price, itemTitle }) {
+  const now = new Date().toISOString();
+  const offers = getOffers().map((o) =>
+    sameItem(o.itemId, itemId) && o.buyerId === buyerId && ACTIVE_STATUSES.includes(o.status)
+      ? {
+          ...o,
+          status: "cancelled",
+          updatedAt: now,
+          history: [...(o.history || []), { actor: "buyer", kind: "cancel", price: o.price, note: "Diganti dengan penawaran baru.", time: now }],
+        }
+      : o
   );
 
   const newOffer = {
@@ -43,169 +84,95 @@ export function createOffer({ itemId, buyerId, buyerName, price, itemTitle }) {
     buyerId,
     buyerName,
     itemTitle,
-    price,          // harga saat ini (bisa diubah saat counter)
+    price,
     originalPrice: price,
-    status: "pending", // pending | accepted | rejected | counter_buyer | counter_seller
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    history: [
-      {
-        actor: "buyer",
-        price,
-        note: `${buyerName} mengajukan harga Rp${price.toLocaleString("id-ID")}`,
-        time: new Date().toISOString(),
-      },
-    ],
+    status: "pending",
+    createdAt: now,
+    updatedAt: now,
+    history: [{ actor: "buyer", kind: "offer", price, note: `${buyerName} menawar ${rp(price)}`, time: now }],
   };
-
-  filtered.push(newOffer);
-  saveOffers(filtered);
+  offers.push(newOffer);
+  saveOffers(offers);
   return newOffer;
 }
 
-/**
- * Menerima harga saat ini.
- * @param {"seller"|"buyer"} actor - siapa yang menyetujui (default: penjual)
- */
+/** Menyetujui harga saat ini (penjual menerima tawaran, atau pembeli menyetujui usulan penjual). */
 export function acceptOffer(offerId, actor = "seller") {
-  const offers = getOffers();
-  const idx = offers.findIndex((o) => o.id === offerId);
-  if (idx === -1) return null;
-  offers[idx] = {
-    ...offers[idx],
-    status: "accepted",
-    updatedAt: new Date().toISOString(),
-    history: [
-      ...offers[idx].history,
-      {
-        actor,
-        price: offers[idx].price,
-        note: `${actor === "buyer" ? "Pembeli" : "Penjual"} menerima harga Rp${offers[idx].price.toLocaleString("id-ID")}`,
-        time: new Date().toISOString(),
-      },
-    ],
-  };
-  saveOffers(offers);
-  return offers[idx];
+  const offer = getOffers().find((o) => o.id === offerId);
+  if (!offer) return null;
+  return updateOffer(
+    offerId,
+    { status: "accepted" },
+    { actor, kind: "accept", price: offer.price, note: `${actor === "buyer" ? "Pembeli" : "Penjual"} menyetujui harga ${rp(offer.price)}` }
+  );
 }
 
-/**
- * Penjual menolak penawaran.
- */
+/** Penjual menolak penawaran. */
 export function rejectOffer(offerId) {
-  const offers = getOffers();
-  const idx = offers.findIndex((o) => o.id === offerId);
-  if (idx === -1) return null;
-  offers[idx] = {
-    ...offers[idx],
-    status: "rejected",
-    updatedAt: new Date().toISOString(),
-    history: [
-      ...offers[idx].history,
-      {
-        actor: "seller",
-        price: offers[idx].price,
-        note: "Penjual menolak penawaran.",
-        time: new Date().toISOString(),
-      },
-    ],
-  };
-  saveOffers(offers);
-  return offers[idx];
+  const offer = getOffers().find((o) => o.id === offerId);
+  if (!offer) return null;
+  return updateOffer(offerId, { status: "rejected" }, { actor: "seller", kind: "reject", price: offer.price, note: "Penjual menolak penawaran." });
 }
 
-/**
- * Penjual mengajukan counter offer (minta ganti harga).
- */
+/** Penjual mengusulkan harga lain. */
 export function counterOffer(offerId, newPrice) {
-  const offers = getOffers();
-  const idx = offers.findIndex((o) => o.id === offerId);
-  if (idx === -1) return null;
-  offers[idx] = {
-    ...offers[idx],
-    price: newPrice,
-    status: "counter_seller",
-    updatedAt: new Date().toISOString(),
-    history: [
-      ...offers[idx].history,
-      {
-        actor: "seller",
-        price: newPrice,
-        note: `Penjual mengusulkan harga Rp${newPrice.toLocaleString("id-ID")}`,
-        time: new Date().toISOString(),
-      },
-    ],
-  };
-  saveOffers(offers);
-  return offers[idx];
+  return updateOffer(
+    offerId,
+    { price: newPrice, status: "counter_seller" },
+    { actor: "seller", kind: "counter", price: newPrice, note: `Penjual mengusulkan ${rp(newPrice)}` }
+  );
 }
 
-/**
- * Buyer membalas counter offer dari penjual (ajukan ulang harga).
- */
+/** Pembeli membalas usulan penjual dengan harga baru. */
 export function buyerCounterOffer(offerId, newPrice, buyerName) {
-  const offers = getOffers();
-  const idx = offers.findIndex((o) => o.id === offerId);
-  if (idx === -1) return null;
-  offers[idx] = {
-    ...offers[idx],
-    price: newPrice,
-    status: "counter_buyer",
-    updatedAt: new Date().toISOString(),
-    history: [
-      ...offers[idx].history,
-      {
-        actor: "buyer",
-        price: newPrice,
-        note: `${buyerName} mengajukan ulang harga Rp${newPrice.toLocaleString("id-ID")}`,
-        time: new Date().toISOString(),
-      },
-    ],
-  };
-  saveOffers(offers);
-  return offers[idx];
+  return updateOffer(
+    offerId,
+    { price: newPrice, status: "counter_buyer" },
+    { actor: "buyer", kind: "offer", price: newPrice, note: `${buyerName || "Pembeli"} menawar ${rp(newPrice)}` }
+  );
+}
+
+/** Membatalkan negosiasi (termasuk setelah deal, sebelum dibayar). */
+export function cancelDeal(offerId, actor = "buyer") {
+  const offer = getOffers().find((o) => o.id === offerId);
+  if (!offer) return null;
+  return updateOffer(
+    offerId,
+    { status: "cancelled" },
+    { actor, kind: "cancel", price: offer.price, note: `${actor === "seller" ? "Penjual" : "Pembeli"} membatalkan negosiasi.` }
+  );
 }
 
 /**
- * Buyer membatalkan deal (setelah penjual terima tapi buyer cancel di popup).
+ * Tandai deal selesai di checkout (sudah dibayar, atau pesanan COD dibuat).
+ * @param {{ cod?: boolean }} options - cod: pembayaran dilakukan saat bertemu
  */
-export function cancelDeal(offerId) {
-  const offers = getOffers();
-  const idx = offers.findIndex((o) => o.id === offerId);
-  if (idx === -1) return null;
-  offers[idx] = {
-    ...offers[idx],
-    status: "cancelled",
-    updatedAt: new Date().toISOString(),
-  };
-  saveOffers(offers);
-  return offers[idx];
+export function completeOffer(offerId, { cod = false } = {}) {
+  const offer = getOffers().find((o) => o.id === offerId);
+  if (!offer || offer.status !== "accepted") return null;
+  return updateOffer(
+    offerId,
+    { status: "completed" },
+    {
+      actor: "buyer",
+      kind: "complete",
+      cod,
+      price: offer.price,
+      note: cod ? `Pesanan COD ${rp(offer.price)} dibuat` : `Pembeli membayar ${rp(offer.price)}`,
+    }
+  );
 }
 
-/**
- * Ambil penawaran aktif milik buyer untuk item tertentu.
- */
+/** Penawaran aktif milik pembeli untuk barang tertentu. */
 export function getMyOffer(itemId, buyerId) {
-  const offers = getOffers();
   return (
-    offers.find(
-      (o) =>
-        String(o.itemId) === String(itemId) &&
-        o.buyerId === buyerId &&
-        !["rejected", "cancelled"].includes(o.status)
+    getOffers().find(
+      (o) => sameItem(o.itemId, itemId) && o.buyerId === buyerId && ACTIVE_STATUSES.includes(o.status)
     ) || null
   );
 }
 
-/**
- * Ambil semua penawaran yang masuk untuk item tertentu (sisi penjual).
- */
+/** Semua penawaran aktif untuk barang tertentu (sisi penjual). */
 export function getOffersForItem(itemId) {
-  const offers = getOffers();
-  return offers.filter(
-    (o) =>
-      String(o.itemId) === String(itemId) &&
-      !["rejected", "cancelled"].includes(o.status)
-  );
+  return getOffers().filter((o) => sameItem(o.itemId, itemId) && ACTIVE_STATUSES.includes(o.status));
 }
-

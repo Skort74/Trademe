@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
+import BackButton from "./components/BackButton";
 import { findUserByLoginIdentifier, setCurrentSession } from "./utils/auth";
 
 export default function HalamanLogin({
+  onGoBack,
   onNavigate,
   onLoginSuccess,
   initialEmail = "",
@@ -148,6 +150,8 @@ export default function HalamanLogin({
       <div className="w-full lg:w-1/2 flex flex-col justify-between px-6 sm:px-12 md:px-16 lg:px-14 xl:px-24 py-8 lg:py-10 min-h-screen">
         {/* Brand Header */}
         <div className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-3">
+          <BackButton onClick={onGoBack} />
           <button
             type="button"
             onClick={() => onNavigate && onNavigate("home")}
@@ -163,6 +167,7 @@ export default function HalamanLogin({
               TradeMe
             </span>
           </button>
+          </div>
         </div>
 
         {/* Form Container */}

@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
+import BackButton from "./components/BackButton";
 
 // ==========================================
 // DATA JENIS TRANSAKSI
@@ -83,6 +84,7 @@ function Field({ label, children }) {
 
 export default function UnggahBarang({
   onNavigate,
+  onGoBack,
   currentUser,
 }) {
   const params = new URLSearchParams(
@@ -139,7 +141,9 @@ export default function UnggahBarang({
   // ==========================================
 
   const handleBack = () => {
-    if (typeof onNavigate === "function") {
+    if (typeof onGoBack === "function") {
+      onGoBack();
+    } else if (typeof onNavigate === "function") {
       onNavigate("home");
     } else {
       window.location.assign("/");
@@ -314,24 +318,14 @@ export default function UnggahBarang({
 
       {/* HEADER */}
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
-        <div className="relative mx-auto flex h-[72px] max-w-5xl items-center justify-center px-5">
-
-          <button
-            type="button"
-            onClick={handleBack}
-            className="absolute left-5 flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:text-emerald-900"
-          >
-            ← Kembali
+        <div className="mx-auto flex h-[72px] max-w-5xl items-center gap-3 px-5">
+          <BackButton onClick={handleBack} />
+          <button type="button" onClick={() => (onNavigate ? onNavigate("home") : window.location.assign("/"))} className="flex items-center gap-2.5 group focus:outline-none" aria-label="Ke beranda">
+            <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] w-[35px] h-[35px] transition-transform group-hover:scale-105">
+              <span className="text-white text-[19px] font-extrabold leading-none">T</span>
+            </div>
+            <span className="text-[#1F2A24] text-[21px] font-extrabold tracking-tight">TradeMe</span>
           </button>
-
-          <button
-            type="button"
-            onClick={handleBack}
-            className="text-xl font-extrabold text-gray-900"
-          >
-            TradeMe
-          </button>
-
         </div>
       </header>
 

@@ -1,4 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { getConversationsForUser, countUnread } from "./utils/chat";
+import { getOffers } from "./utils/negotiation";
 import "./TradeMeHome.css";
 
 const ALL_PRODUCTS = [
@@ -126,6 +128,57 @@ export default function TradeMeHome({
   const [favorites, setFavorites] = useState({});
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [chatTick, setChatTick] = useState(0);
+
+  // Pantau perubahan chat dan penawaran dari storage & interval polling
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (!e.key || e.key === "treadme_conversations" || e.key === "treadme_offers") {
+        setChatTick((t) => t + 1);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    const interval = setInterval(() => {
+      setChatTick((t) => t + 1);
+    }, 2000);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Status apakah ada chat / penawaran masuk yang belum dibaca
+  const hasUnreadChat = useMemo(() => {
+    if (!currentUser) return false;
+
+    // 1. Cek unread chat messages
+    const convs = getConversationsForUser(currentUser);
+    const hasUnread = convs.some((c) => countUnread(c, currentUser.username) > 0);
+    if (hasUnread) return true;
+
+    // 2. Cek jika ada tawaran masuk / respons tawar-menawar
+    const offers = getOffers();
+    const isSeller = currentUser.role === "admin" || currentUser.username === "budi";
+    if (isSeller) {
+      // Penjual dapat notif bila ada penawaran pending atau buyer mengajukan counter
+      if (offers.some((o) => o.status === "pending" || o.status === "counter_buyer")) {
+        return true;
+      }
+    } else {
+      // Pembeli dapat notif bila penawarannya di-acc atau penjual counter harga
+      if (
+        offers.some(
+          (o) =>
+            o.buyerId === currentUser.username &&
+            (o.status === "counter_seller" || o.status === "accepted")
+        )
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }, [currentUser, chatTick]);
 
   const toggleFavorite = (id) => {
     setFavorites((prev) => ({
@@ -251,19 +304,23 @@ export default function TradeMeHome({
               className="tm-nav-link cursor-pointer"
               onClick={() => onNavigate && onNavigate("chat")}
             >
-              <svg
-                width="19"
-                height="19"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-              <span className="tm-badge-notification">2</span>
+              <div className="relative flex items-center justify-center">
+                <svg
+                  width="19"
+                  height="19"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                {hasUnreadChat && (
+                  <span className="tm-badge-notification-dot" title="Ada chat masuk baru"></span>
+                )}
+              </div>
               <span className="tm-nav-text">Chat</span>
             </div>
 

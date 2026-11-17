@@ -1,15 +1,18 @@
 import React, { useState } from "react";
 import { transactions, disputes } from "../utils/adminStore";
+import GoogleMap from "../components/GoogleMap";
 import {
   Card, CardHeader, TwoColumn, SearchInput, SelectFilter, Table, Row, Cell, Badge, Button,
   DetailPanel, InfoList, ConfirmModal, Modal, Field, textareaCls, useStoreData, fmtRp, fmtDate, matches,
 } from "./AdminUI";
 
-export const TX_STATUSES = ["Menunggu Pembayaran", "Dibayar", "Dikirim", "Selesai", "Dibatalkan", "Dana Dikembalikan"];
+export const TX_STATUSES = ["Menunggu Pembayaran", "Menunggu COD", "Dibayar", "Dikirim", "Selesai", "Dibatalkan", "Dana Dikembalikan"];
 
 // Langkah berikutnya per status
 const NEXT_STEP = {
   "Menunggu Pembayaran": { to: "Dibayar", label: "Konfirmasi Pembayaran" },
+  // COD: pembeli membayar langsung ke penjual saat bertemu
+  "Menunggu COD": { to: "Selesai", label: "Tandai COD Selesai (sudah bertemu & dibayar)" },
   Dibayar: { to: "Dikirim", label: "Tandai Dikirim / Diserahkan" },
   Dikirim: { to: "Selesai", label: "Selesaikan & Teruskan Dana" },
 };
@@ -56,7 +59,7 @@ export default function AdminTransaksi({ notify, onGoTab }) {
   };
 
   const step = sel && NEXT_STEP[sel.status];
-  const canCancel = sel && ["Menunggu Pembayaran", "Dibayar"].includes(sel.status);
+  const canCancel = sel && ["Menunggu Pembayaran", "Menunggu COD", "Dibayar"].includes(sel.status);
   const canDispute = sel && ["Dibayar", "Dikirim"].includes(sel.status) && !selDispute;
 
   return (
@@ -109,12 +112,23 @@ export default function AdminTransaksi({ notify, onGoTab }) {
                   ["Total", fmtRp(sel.total || sel.amount)],
                   ["Pembayaran", sel.paymentMethod],
                   ["Pengiriman", sel.deliveryMethod],
-                  sel.meetingTime && ["Waktu temu", fmtDate(sel.meetingTime)],
+                  sel.meetingTime && [sel.deliveryMethod === "Delivery" ? "Jadwal kirim" : "Waktu temu", fmtDate(sel.meetingTime)],
+                  sel.meetingLocation && ["Lokasi COD", sel.meetingLocation.label],
+                  sel.deliveryAddress && ["Alamat kirim", sel.deliveryAddress],
                   sel.notes && ["Catatan", sel.notes],
                   ["Dibuat", fmtDate(sel.createdAt)],
                   ["Diperbarui", fmtDate(sel.updatedAt)],
                 ]}
               />
+
+              {(sel.meetingLocation?.query || sel.deliveryAddress) && (
+                <GoogleMap
+                  query={sel.meetingLocation?.query || sel.deliveryAddress}
+                  height={160}
+                  title="Lokasi serah terima"
+                  className="mb-3"
+                />
+              )}
 
               {selDispute && (
                 <div className="mb-3 p-3 rounded-xl bg-[#FEF3C7] border border-[#FCD34D] text-[11px] text-[#92400E]">

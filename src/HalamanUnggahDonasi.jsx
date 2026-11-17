@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import PopupSuksesDonasi from './PopupSuksesDonasi';
+import BackButton from './components/BackButton';
 import { getCurrentSession } from './utils/auth';
 import { addAdminItem } from './utils/adminStore';
 import { compressImage } from './utils/image';
@@ -7,7 +8,7 @@ import { compressImage } from './utils/image';
 const MAX_PHOTOS = 5;
 const KONDISI_LABEL = { baru: 'Baru', bekas_baik: 'Bekas - Baik', bekas_cukup: 'Bekas - Cukup' };
 
-const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
+const HalamanUnggahDonasi = ({ onBack, onHome, recipientName, recipientType }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [photos, setPhotos] = useState([]); // foto barang yang dipilih
   const [penerima, setPenerima] = useState(recipientName || ''); // terisi dari kartu, boleh diubah
@@ -98,12 +99,14 @@ const HalamanUnggahDonasi = ({ onBack, recipientName, recipientType }) => {
     <div className="min-h-screen bg-[#F8FAF9] font-sans text-[#1F2A24]">
       {/* Header Sederhana */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-[1280px] mx-auto px-6 h-[72px] flex items-center justify-between">
-          <button onClick={onBack} className="flex items-center gap-2 text-[#2F7D5B] font-bold hover:underline">
-            ← Kembali
+        <div className="max-w-[1280px] mx-auto px-6 h-[72px] flex items-center gap-3">
+          <BackButton onClick={onBack} />
+          <button type="button" onClick={onHome || onBack} className="flex items-center gap-2.5 group focus:outline-none" aria-label="Ke beranda">
+            <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] w-[35px] h-[35px] transition-transform group-hover:scale-105">
+              <span className="text-white text-[19px] font-extrabold leading-none">T</span>
+            </div>
+            <span className="text-[#1F2A24] text-[21px] font-extrabold tracking-tight">TradeMe</span>
           </button>
-          <span className="font-extrabold text-xl tracking-tight">TradeMe</span>
-          <div className="w-20"></div> {/* Spacer agar logo tengah */}
         </div>
       </header>
 

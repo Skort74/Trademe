@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import HalamanUnggahDonasi from './HalamanUnggahDonasi';
 import AjukanPenerima from "./AjukanPenerima";
+import BackButton from './components/BackButton';
 import { foundations, recipientApplications, STORE_EVENT } from './utils/adminStore';
 import { getConversationsForUser, countUnread } from './utils/chat';
 
@@ -58,7 +59,7 @@ const DEFAULT_PERORANGAN = [
   }
 ];
 
-const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
+const HalamanDonasi = ({ onBack, onGoBack, onNavigate, currentUser, onLogout }) => {
   // State untuk mengontrol tampilan (List Penerima vs Form Unggah)
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState(null);
@@ -136,6 +137,7 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
         }}
         recipientName={selectedRecipient.name}
         recipientType={activeTab} // Kirim tipe 'yayasan' atau 'perorangan'
+        onHome={onBack}
       />
     );
   }
@@ -145,12 +147,15 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
       {/* ================= NAVBAR ================= */}
       <header className="w-full border-b border-[#EAEFEA] bg-white sticky top-0 z-40">
         <div className="max-w-[1320px] mx-auto px-6 h-[72px] flex items-center justify-between">
-          <button onClick={onBack} className="flex items-center gap-2.5 group focus:outline-none">
-            <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] w-[35px] h-[35px]">
-              <span className="text-[#FFF] text-[19px] font-extrabold">T</span>
-            </div>
-            <span className="text-[#1F2A24] text-[21px] font-extrabold tracking-tight">TradeMe</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <BackButton onClick={onGoBack} />
+            <button onClick={onBack} className="flex items-center gap-2.5 group focus:outline-none">
+              <div className="flex items-center justify-center rounded-[11px] bg-[#2F7D5B] w-[35px] h-[35px]">
+                <span className="text-[#FFF] text-[19px] font-extrabold">T</span>
+              </div>
+              <span className="text-[#1F2A24] text-[21px] font-extrabold tracking-tight">TradeMe</span>
+            </button>
+          </div>
 
           <div className="hidden md:flex flex-1 max-w-md mx-8 relative">
             <input 
