@@ -1,8 +1,13 @@
-# TradeMe Backend
+# TradeMe - Platform Jual-Beli & Trading Terpercaya
 
-Backend aplikasi TradeMe menggunakan Flask dan MySQL.
+TradeMe adalah platform web sosial-ekonomi yang mempertemukan pemilik barang bekas layak pakai dengan masyarakat yang membutuhkan. Proyek ini mendukung target SDG 1: Tanpa Kemiskinan.
 
 ## Teknologi
+### Frontend
+- React.js (React 19, Create React App base)
+- Tailwind CSS + Custom CSS modular
+
+### Backend
 - Python
 - Flask
 - Flask-CORS
@@ -10,42 +15,37 @@ Backend aplikasi TradeMe menggunakan Flask dan MySQL.
 - mysql-connector-python
 - python-dotenv
 
-## Persiapan
+---
+
+## Panduan Frontend
+
+### Available Scripts
+In the project directory, you can run:
+
+#### `npm start`
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
+
+#### `npm test`
+Launches the test runner in the interactive watch mode.
+
+#### `npm run build`
+Builds the app for production to the `build` folder.
+
+#### `npm run eject`
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+
+---
+
+## Panduan Backend
+
+### Persiapan
 1. Pastikan Python dan MySQL sudah terpasang.
 2. Clone repository dan pindah ke folder backend.
 3. Buat virtual environment:
    ```bash
    python3 -m venv venv
    source venv/bin/activate
-   ```
-4. Pasang dependensi:
-   ```bash
-   pip install -r requirements.txt
-   ```
-5. Buat file `.env` berdasarkan konfigurasi database lokal:
-   ```env
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASSWORD=Wonosari72.
-   DB_NAME=trademe
-   JWT_SECRET_KEY=2712cc408ed2f915e6b01a1733447fc8aee7757c651942a9df7daa67af6f5373
-   JWT_ACCESS_TOKEN_MINUTES=15
-   ```
-6. Impor struktur database `trademe` melalui MySQL Workbench.
-
-## Menjalankan Backend
-Jalankan:
-```bash
-python app.py
-```
-
-Server berjalan pada:
-`http://127.0.0.1:5001`
-
-## Endpoint Dasar
-- `GET /` — memeriksa server Flask.
-- `GET /api/health` — memeriksa koneksi database.
-
-## Catatan
-Jangan mengunggah file `.env`, password database, atau folder `venv` ke GitHub. Setiap pengembang harus mengatur `.env` sesuai konfigurasi MySQL di komputernya masing-masing.
