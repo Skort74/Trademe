@@ -1,0 +1,816 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "TradeMe API",
+        "description": "Dokumentasi API TradeMe",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/flasgger_static/{filename}": {
+            "get": {
+                "summary": "Endpoint GET /flasgger_static/{filename}",
+                "tags": [
+                    "static"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/apidocs/": {
+            "get": {
+                "summary": "Endpoint GET /apidocs/",
+                "tags": [
+                    "apidocs"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/oauth2-redirect.html": {
+            "get": {
+                "summary": "Endpoint GET /oauth2-redirect.html",
+                "tags": [
+                    "oauth_redirect"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/apidocs/index.html": {
+            "get": {
+                "summary": "Endpoint GET /apidocs/index.html",
+                "tags": [
+                    "<lambda>"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/apispec_1.json": {
+            "get": {
+                "summary": "Endpoint GET /apispec_1.json",
+                "tags": [
+                    "apispec_1"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/kategori": {
+            "get": {
+                "summary": "Endpoint GET /api/kategori",
+                "tags": [
+                    "get_kategori"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/kategori/{kategori_id}": {
+            "put": {
+                "summary": "Endpoint PUT /api/kategori/{kategori_id}",
+                "tags": [
+                    "ubah_kategori"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/register": {
+            "post": {
+                "summary": "Endpoint POST /api/auth/register",
+                "tags": [
+                    "register"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "summary": "Endpoint POST /api/auth/login",
+                "tags": [
+                    "login"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "summary": "Endpoint GET /api/auth/me",
+                "tags": [
+                    "get_current_user"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "summary": "Endpoint POST /api/auth/logout",
+                "tags": [
+                    "logout"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/forgot-password": {
+            "post": {
+                "summary": "Endpoint POST /api/auth/forgot-password",
+                "tags": [
+                    "forgot_password"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/reset-password": {
+            "post": {
+                "summary": "Endpoint POST /api/auth/reset-password",
+                "tags": [
+                    "reset_password"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/profile": {
+            "get": {
+                "summary": "Endpoint GET /api/profile",
+                "tags": [
+                    "get_profile"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/profile/photo": {
+            "post": {
+                "summary": "Endpoint POST /api/profile/photo",
+                "tags": [
+                    "upload_profile_photo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/uploads/profiles/{filename}": {
+            "get": {
+                "summary": "Endpoint GET /uploads/profiles/{filename}",
+                "tags": [
+                    "serve_profile_photo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang": {
+            "get": {
+                "summary": "Endpoint GET /api/barang",
+                "tags": [
+                    "get_barang"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang/{barang_id}": {
+            "get": {
+                "summary": "Endpoint GET /api/barang/{barang_id}",
+                "tags": [
+                    "get_detail_barang"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang/{barang_id}/photo": {
+            "post": {
+                "summary": "Endpoint POST /api/barang/{barang_id}/photo",
+                "tags": [
+                    "upload_barang_photo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/{barang_id}/approve": {
+            "post": {
+                "summary": "Endpoint POST /api/admin/barang/{barang_id}/approve",
+                "tags": [
+                    "approve_barang"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/{barang_id}/reject": {
+            "post": {
+                "summary": "Endpoint POST /api/admin/barang/{barang_id}/reject",
+                "tags": [
+                    "reject_barang"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang/{barang_id}/status": {
+            "patch": {
+                "summary": "Endpoint PATCH /api/barang/{barang_id}/status",
+                "tags": [
+                    "update_barang_status"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/uploads/barang/{filename}": {
+            "get": {
+                "summary": "Endpoint GET /uploads/barang/{filename}",
+                "tags": [
+                    "serve_barang_photo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi": {
+            "post": {
+                "summary": "Endpoint POST /api/transaksi",
+                "tags": [
+                    "create_transaksi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/pembeli": {
+            "get": {
+                "summary": "Endpoint GET /api/transaksi/pembeli",
+                "tags": [
+                    "list_transaksi_pembeli"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/penjual": {
+            "get": {
+                "summary": "Endpoint GET /api/transaksi/penjual",
+                "tags": [
+                    "list_transaksi_penjual"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/{transaksi_id}": {
+            "get": {
+                "summary": "Endpoint GET /api/transaksi/{transaksi_id}",
+                "tags": [
+                    "get_detail_transaksi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/{transaksi_id}/bukti-bayar": {
+            "post": {
+                "summary": "Endpoint POST /api/transaksi/{transaksi_id}/bukti-bayar",
+                "tags": [
+                    "upload_bukti_bayar"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/uploads/pembayaran/{filename}": {
+            "get": {
+                "summary": "Endpoint GET /uploads/pembayaran/{filename}",
+                "tags": [
+                    "serve_pembayaran_photo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/transaksi/{transaksi_id}/verify": {
+            "post": {
+                "summary": "Endpoint POST /api/admin/transaksi/{transaksi_id}/verify",
+                "tags": [
+                    "verify_pembayaran"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/{transaksi_id}/status": {
+            "patch": {
+                "summary": "Endpoint PATCH /api/transaksi/{transaksi_id}/status",
+                "tags": [
+                    "update_status_transaksi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/yayasan": {
+            "post": {
+                "summary": "Endpoint POST /api/admin/yayasan",
+                "tags": [
+                    "admin_create_yayasan"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/yayasan": {
+            "get": {
+                "summary": "Endpoint GET /api/yayasan",
+                "tags": [
+                    "get_yayasan_list"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi": {
+            "post": {
+                "summary": "Endpoint POST /api/donasi",
+                "tags": [
+                    "create_donasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi/donor": {
+            "get": {
+                "summary": "Endpoint GET /api/donasi/donor",
+                "tags": [
+                    "get_donasi_donor"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi/pengajuan": {
+            "post": {
+                "summary": "Endpoint POST /api/donasi/pengajuan",
+                "tags": [
+                    "create_pengajuan_donasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/penerima": {
+            "get": {
+                "summary": "Endpoint GET /api/penerima",
+                "tags": [
+                    "get_penerima_list"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi/pengajuan/saya": {
+            "get": {
+                "summary": "Endpoint GET /api/donasi/pengajuan/saya",
+                "tags": [
+                    "get_pengajuan_donasi_saya"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/uploads/donasi/{filename}": {
+            "get": {
+                "summary": "Endpoint GET /uploads/donasi/{filename}",
+                "tags": [
+                    "serve_donasi_dokumen"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/donasi": {
+            "get": {
+                "summary": "Endpoint GET /api/admin/donasi",
+                "tags": [
+                    "admin_get_donasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/donasi/{donasi_id}/verify": {
+            "post": {
+                "summary": "Endpoint POST /api/admin/donasi/{donasi_id}/verify",
+                "tags": [
+                    "admin_verify_donasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/donasi/pengajuan": {
+            "get": {
+                "summary": "Endpoint GET /api/admin/donasi/pengajuan",
+                "tags": [
+                    "admin_get_pengajuan_donasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/donasi/pengajuan/{pengajuan_id}/verify": {
+            "post": {
+                "summary": "Endpoint POST /api/admin/donasi/pengajuan/{pengajuan_id}/verify",
+                "tags": [
+                    "admin_verify_pengajuan"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/donasi/{donasi_id}/salurkan": {
+            "post": {
+                "summary": "Endpoint POST /api/admin/donasi/{donasi_id}/salurkan",
+                "tags": [
+                    "admin_salurkan_donasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi/{donasi_id}/status": {
+            "patch": {
+                "summary": "Endpoint PATCH /api/donasi/{donasi_id}/status",
+                "tags": [
+                    "update_status_donasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang": {
+            "post": {
+                "summary": "Endpoint POST /api/lelang",
+                "tags": [
+                    "create_lelang"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/{lelang_id}": {
+            "get": {
+                "summary": "Endpoint GET /api/lelang/{lelang_id}",
+                "tags": [
+                    "get_lelang_detail"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/penjual": {
+            "get": {
+                "summary": "Endpoint GET /api/lelang/penjual",
+                "tags": [
+                    "get_lelang_penjual"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/{lelang_id}/bid": {
+            "post": {
+                "summary": "Endpoint POST /api/lelang/{lelang_id}/bid",
+                "tags": [
+                    "place_bid"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/{lelang_id}/bids": {
+            "get": {
+                "summary": "Endpoint GET /api/lelang/{lelang_id}/bids",
+                "tags": [
+                    "get_lelang_bids"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/saya/bids": {
+            "get": {
+                "summary": "Endpoint GET /api/lelang/saya/bids",
+                "tags": [
+                    "get_my_bids"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/{lelang_id}/close": {
+            "post": {
+                "summary": "Endpoint POST /api/lelang/{lelang_id}/close",
+                "tags": [
+                    "close_lelang"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/{lelang_id}/batal": {
+            "post": {
+                "summary": "Endpoint POST /api/lelang/{lelang_id}/batal",
+                "tags": [
+                    "cancel_lelang"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/lelang/menang": {
+            "get": {
+                "summary": "Endpoint GET /api/lelang/menang",
+                "tags": [
+                    "get_my_won_auctions"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/negosiasi": {
+            "post": {
+                "summary": "Endpoint POST /api/negosiasi",
+                "tags": [
+                    "create_negosiasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/negosiasi/pembeli": {
+            "get": {
+                "summary": "Endpoint GET /api/negosiasi/pembeli",
+                "tags": [
+                    "get_negosiasi_pembeli"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/negosiasi/penjual": {
+            "get": {
+                "summary": "Endpoint GET /api/negosiasi/penjual",
+                "tags": [
+                    "get_negosiasi_penjual"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/negosiasi/{negosiasi_id}": {
+            "get": {
+                "summary": "Endpoint GET /api/negosiasi/{negosiasi_id}",
+                "tags": [
+                    "get_negosiasi_detail"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/negosiasi/{negosiasi_id}/respon": {
+            "patch": {
+                "summary": "Endpoint PATCH /api/negosiasi/{negosiasi_id}/respon",
+                "tags": [
+                    "respond_negosiasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/negosiasi/{negosiasi_id}/batal": {
+            "patch": {
+                "summary": "Endpoint PATCH /api/negosiasi/{negosiasi_id}/batal",
+                "tags": [
+                    "cancel_negosiasi"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/": {
+            "get": {
+                "summary": "Endpoint GET /",
+                "tags": [
+                    "default"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/health": {
+            "get": {
+                "summary": "Endpoint GET /api/health",
+                "tags": [
+                    "default"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        }
+    }
+}
