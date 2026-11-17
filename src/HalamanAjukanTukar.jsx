@@ -1,4 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+
+const KOORDINAT_DEFAULT_SURABAYA = {
+  latitude: -7.2575,
+  longitude: 112.7521
+};
+
+const formatAlamatRekomendasi = (properties = {}) => {
+  const bagianAlamat = [
+    properties.street,
+    properties.district,
+    properties.city,
+    properties.state
+  ].filter(Boolean);
+
+  return [...new Set(bagianAlamat)].join(', ');
+};
 
 const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
   const [pesan, setPesan] = useState('');
@@ -10,6 +26,13 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
   // State Lokasi (Ketik & Hasil Konfirmasi)
   const [inputLokasi, setInputLokasi] = useState('');
   const [lokasiTerkonfirmasi, setLokasiTerkonfirmasi] = useState('');
+  const [koordinatLokasi, setKoordinatLokasi] = useState(null);
+  const [sedangMencariLokasi, setSedangMencariLokasi] = useState(false);
+  const [pesanLokasi, setPesanLokasi] = useState('');
+  const [rekomendasiLokasi, setRekomendasiLokasi] = useState([]);
+  const [sedangMencariRekomendasi, setSedangMencariRekomendasi] = useState(false);
+  const [errorRekomendasi, setErrorRekomendasi] = useState('');
+  const [pencarianLokasiAktif, setPencarianLokasiAktif] = useState(false);
 
   // State untuk Pop-up Sukses
   const [isSuccess, setIsSuccess] = useState(false);
@@ -77,9 +100,134 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
       alert("Silakan ketik nama lokasi terlebih dahulu.");
       return;
     }
+    setKoordinatLokasi(null);
+    setPesanLokasi('');
     setLokasiTerkonfirmasi(inputLokasi);
+    setPencarianLokasiAktif(false);
+    setRekomendasiLokasi([]);
     alert("Lokasi berhasil dikunci!");
   };
+
+  const handleGunakanLokasiSaatIni = (e) => {
+    e.preventDefault();
+
+    if (!navigator.geolocation) {
+      setPesanLokasi('Browser ini tidak mendukung pendeteksian lokasi. Silakan cari lokasi secara manual.');
+      return;
+    }
+
+    setSedangMencariLokasi(true);
+    setPesanLokasi('Mengambil lokasi perangkat...');
+    setPencarianLokasiAktif(false);
+    setRekomendasiLokasi([]);
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const koordinat = {
+          latitude: coords.latitude,
+          longitude: coords.longitude
+        };
+        const koordinatTeks = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+
+        setKoordinatLokasi(koordinat);
+        setInputLokasi('Lokasi saya saat ini');
+        setLokasiTerkonfirmasi(`Lokasi saat ini (${koordinatTeks})`);
+        setPesanLokasi('Lokasi ditemukan. Peta sudah diarahkan ke posisi kamu.');
+        setSedangMencariLokasi(false);
+      },
+      (error) => {
+        const pesanError = {
+          1: 'Izin lokasi ditolak. Aktifkan izin lokasi di browser, lalu coba lagi.',
+          2: 'Lokasi tidak dapat ditemukan. Pastikan GPS atau layanan lokasi perangkat aktif.',
+          3: 'Pencarian lokasi terlalu lama. Silakan coba lagi.'
+        };
+
+        setPesanLokasi(pesanError[error.code] || 'Terjadi kesalahan saat mengambil lokasi. Silakan coba lagi.');
+        setSedangMencariLokasi(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      }
+    );
+  };
+
+  const handleInputLokasiChange = (e) => {
+    setInputLokasi(e.target.value);
+    setKoordinatLokasi(null);
+    setLokasiTerkonfirmasi('');
+    setPesanLokasi('');
+    setPencarianLokasiAktif(true);
+  };
+
+  const handlePilihRekomendasi = (rekomendasi) => {
+    const [longitude, latitude] = rekomendasi.geometry.coordinates;
+    const namaLokasi = rekomendasi.properties.name || rekomendasi.properties.street || 'Lokasi pilihan';
+    const alamatLokasi = formatAlamatRekomendasi(rekomendasi.properties);
+    const labelLokasi = alamatLokasi ? `${namaLokasi}, ${alamatLokasi}` : namaLokasi;
+
+    setInputLokasi(labelLokasi);
+    setKoordinatLokasi({ latitude, longitude });
+    setLokasiTerkonfirmasi(labelLokasi);
+    setPesanLokasi('Lokasi rekomendasi dipilih. Peta sudah diarahkan ke titik tersebut.');
+    setPencarianLokasiAktif(false);
+    setRekomendasiLokasi([]);
+    setErrorRekomendasi('');
+  };
+
+  useEffect(() => {
+    const kataKunci = inputLokasi.trim();
+
+    if (!pencarianLokasiAktif || kataKunci.length < 3) {
+      setRekomendasiLokasi([]);
+      setSedangMencariRekomendasi(false);
+      setErrorRekomendasi('');
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const titikFokus = koordinatLokasi || KOORDINAT_DEFAULT_SURABAYA;
+
+    setSedangMencariRekomendasi(true);
+    setErrorRekomendasi('');
+
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          q: kataKunci,
+          lat: String(titikFokus.latitude),
+          lon: String(titikFokus.longitude),
+          limit: '6',
+          countrycode: 'ID'
+        });
+        const response = await fetch(`https://photon.komoot.io/api/?${params.toString()}`, {
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          throw new Error('Pencarian lokasi gagal');
+        }
+
+        const data = await response.json();
+        setRekomendasiLokasi(Array.isArray(data.features) ? data.features : []);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setRekomendasiLokasi([]);
+          setErrorRekomendasi('Rekomendasi tempat belum dapat dimuat. Silakan coba lagi.');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setSedangMencariRekomendasi(false);
+        }
+      }
+    }, 450);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [inputLokasi, pencarianLokasiAktif, koordinatLokasi]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -88,7 +236,7 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
       return;
     }
     if (!lokasiTerkonfirmasi) {
-      alert("Silakan cari dan klik 'Gunakan Lokasi Ini' pada peta terlebih dahulu.");
+      alert("Silakan pilih lokasi pertemuan terlebih dahulu.");
       return;
     }
     
@@ -101,7 +249,10 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
   };
 
   // URL Google Maps untuk Iframe
-  const mapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(inputLokasi || 'Surabaya')}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+  const queryPeta = koordinatLokasi
+    ? `${koordinatLokasi.latitude},${koordinatLokasi.longitude}`
+    : inputLokasi || 'Surabaya';
+  const mapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(queryPeta)}&t=&z=17&ie=UTF8&iwloc=&output=embed`;
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] py-8 px-4 font-sans text-gray-800">
@@ -199,24 +350,98 @@ const HalamanAjukanTukar = ({ product, onBack, onNavigate }) => {
           {/* KARTU LOKASI PERTEMUAN (MAPS & VALIDASI) */}
           <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
             <h3 className="font-bold text-gray-800 mb-1">Lokasi Pertemuan (COD)</h3>
-            <p className="text-xs text-gray-500 mb-3">Ketik nama tempat, lalu klik "Gunakan Lokasi Ini" untuk mengunci titik temu.</p>
+            <p className="text-xs text-gray-500 mb-3">Ketik nama tempat lalu tekan Enter, atau gunakan lokasi perangkat untuk menentukan titik temu.</p>
             
             <div className="flex flex-col sm:flex-row gap-2 mb-4">
-              <input 
-                type="text" 
-                placeholder="Contoh: Taman Bungkul Surabaya" 
-                value={inputLokasi} 
-                onChange={(e) => setInputLokasi(e.target.value)} 
-                className="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:border-[#2F7D5B]" 
-              />
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Contoh: Tunjungan Surabaya"
+                  value={inputLokasi}
+                  onChange={handleInputLokasiChange}
+                  onFocus={() => {
+                    if (inputLokasi.trim().length >= 3 && !lokasiTerkonfirmasi) {
+                      setPencarianLokasiAktif(true);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleKonfirmasiLokasi(e);
+                  }}
+                  autoComplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={pencarianLokasiAktif && inputLokasi.trim().length >= 3}
+                  aria-controls="rekomendasi-lokasi-listbox"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:border-[#2F7D5B]"
+                />
+
+                {pencarianLokasiAktif && inputLokasi.trim().length >= 3 && (
+                  <div id="rekomendasi-lokasi-listbox" className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden" role="listbox">
+                    {sedangMencariRekomendasi && (
+                      <div className="px-4 py-3 text-xs text-gray-500 flex items-center gap-2">
+                        <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-[#2F7D5B] rounded-full animate-spin" />
+                        Mencari rekomendasi tempat...
+                      </div>
+                    )}
+
+                    {!sedangMencariRekomendasi && errorRekomendasi && (
+                      <div className="px-4 py-3 text-xs text-amber-700">{errorRekomendasi}</div>
+                    )}
+
+                    {!sedangMencariRekomendasi && !errorRekomendasi && rekomendasiLokasi.length === 0 && (
+                      <div className="px-4 py-3 text-xs text-gray-500">Tidak ada rekomendasi tempat yang ditemukan.</div>
+                    )}
+
+                    {!sedangMencariRekomendasi && rekomendasiLokasi.map((rekomendasi) => {
+                      const alamat = formatAlamatRekomendasi(rekomendasi.properties);
+                      const nama = rekomendasi.properties.name || rekomendasi.properties.street || 'Lokasi tanpa nama';
+
+                      return (
+                        <button
+                          key={`${rekomendasi.properties.osm_type}-${rekomendasi.properties.osm_id}`}
+                          type="button"
+                          role="option"
+                          aria-selected="false"
+                          onClick={() => handlePilihRekomendasi(rekomendasi)}
+                          className="w-full px-4 py-3 flex items-start gap-3 text-left border-b border-gray-100 last:border-b-0 hover:bg-[#F3F8F5] transition-colors"
+                        >
+                          <span className="mt-0.5 text-[#2F7D5B]">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 21s6-5.33 6-11a6 6 0 10-12 0c0 5.67 6 11 6 11z" />
+                              <circle cx="12" cy="10" r="2" strokeWidth="2" />
+                            </svg>
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-gray-800 truncate">{nama}</span>
+                            {alamat && <span className="block text-xs text-gray-500 mt-0.5 truncate">{alamat}</span>}
+                          </span>
+                        </button>
+                      );
+                    })}
+
+                    {!sedangMencariRekomendasi && rekomendasiLokasi.length > 0 && (
+                      <div className="px-4 py-2 bg-gray-50 text-[10px] text-gray-400 text-right">
+                        Data lokasi © OpenStreetMap contributors
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <button 
                 type="button" 
-                onClick={handleKonfirmasiLokasi}
-                className="px-5 py-2.5 bg-[#EAF5EF] text-[#2F7D5B] border border-[#2F7D5B] rounded-xl font-bold text-sm hover:bg-[#2F7D5B] hover:text-white transition-colors"
+                onClick={handleGunakanLokasiSaatIni}
+                disabled={sedangMencariLokasi}
+                className="px-5 py-2.5 bg-[#EAF5EF] text-[#2F7D5B] border border-[#2F7D5B] rounded-xl font-bold text-sm hover:bg-[#2F7D5B] hover:text-white transition-colors disabled:opacity-60 disabled:cursor-wait"
               >
-                Gunakan Lokasi Ini
+                {sedangMencariLokasi ? 'Mencari lokasi...' : 'Gunakan lokasi saat ini'}
               </button>
             </div>
+
+            {pesanLokasi && (
+              <p className={`text-xs mb-4 ${koordinatLokasi ? 'text-green-700' : 'text-amber-700'}`} role="status">
+                {pesanLokasi}
+              </p>
+            )}
 
             {lokasiTerkonfirmasi && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-green-800 text-sm font-semibold">

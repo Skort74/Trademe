@@ -424,7 +424,7 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
           {activeMenu === "barang" && (<>
           {/* ================= CARD 1: DAFTAR BARANG  ================= */}
           <section className="bg-white border border-[#DCE6DF] rounded-[15px] p-5 shadow-sm">
-            {/* Header with Title & Filter Bar & Tambah Barang Button */}
+            {/* Header with Title & Filter Bar */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 pb-4">
               <div>
                 <h2 className="text-[#1F2A24] text-[15px] font-bold">
@@ -525,16 +525,6 @@ export default function PanelAdminBarang({ onNavigate, currentUser, onLogout }) 
                     />
                   </svg>
                 </div>
-
-                {/* + Tambah Barang Button */}
-                <button
-                  type="button"
-                  onClick={handleOpenCreate}
-                  className="h-[38px] px-3.5 rounded-[9px] bg-[#2F7D5B] text-white text-xs font-bold flex items-center gap-1.5 hover:bg-[#25664a] active:scale-95 transition-all shadow-sm cursor-pointer"
-                >
-                  <span className="text-base leading-none font-normal">+</span>
-                  <span>Tambah Barang</span>
-                </button>
               </div>
             </div>
 

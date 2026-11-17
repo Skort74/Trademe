@@ -511,7 +511,7 @@ export default function TradeMeHome({
           <div className="tm-filters-row">
             {/* Tabs */}
             <div className="tm-tabs-group">
-              {["Semua", "Jual", "Tukar", "Lelang", "Donasi"].map((tab) => {
+              {["Semua", "Jual", "Tukar", "Lelang"].map((tab) => {
                 const isActive = activeTab === tab;
                 return (
                   <button
