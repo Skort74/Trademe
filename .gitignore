@@ -42,4 +42,6 @@ backend/uploads/
 # Testing
 .pytest_cache/
 .coverage
-htmlcov/
+htmlcov/backend/venv/
+backend/.venv/
+venv/

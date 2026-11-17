@@ -1,0 +1,1182 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "TradeMe API Documentation",
+        "description": "Dokumentasi REST API untuk aplikasi marketplace TradeMe (Jual, Beli, Tukar, Donasi).",
+        "version": "1.0.0"
+    },
+    "basePath": "/",
+    "schemes": [
+        "http"
+    ],
+    "consumes": [
+        "application/json"
+    ],
+    "produces": [
+        "application/json"
+    ],
+    "tags": [
+        {
+            "name": "01 - Health Check",
+            "description": "Cek status server"
+        },
+        {
+            "name": "02 - Authentication",
+            "description": "Register, Login, Reset Password"
+        },
+        {
+            "name": "03 - Profile",
+            "description": "Manajemen Profil User"
+        },
+        {
+            "name": "04 - Kategori",
+            "description": "CRUD Kategori Barang"
+        },
+        {
+            "name": "05 - Barang",
+            "description": "CRUD Barang dan Foto"
+        },
+        {
+            "name": "06 - Transaksi",
+            "description": "Jual-beli dan Pembayaran"
+        },
+        {
+            "name": "07 - Donasi",
+            "description": "Program Donasi, Yayasan, Penerima"
+        }
+    ],
+    "paths": {
+        "/api/health": {
+            "get": {
+                "tags": [
+                    "01 - Health Check"
+                ],
+                "summary": "Cek Koneksi Database",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/register": {
+            "post": {
+                "tags": [
+                    "02 - Authentication"
+                ],
+                "summary": "Registrasi pengguna baru",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nama": {
+                                    "type": "string",
+                                    "example": "Budi Santoso"
+                                },
+                                "email": {
+                                    "type": "string",
+                                    "example": "budi@example.com"
+                                },
+                                "password": {
+                                    "type": "string",
+                                    "example": "Password123!"
+                                },
+                                "no_hp": {
+                                    "type": "string",
+                                    "example": "08123456789"
+                                },
+                                "alamat": {
+                                    "type": "string",
+                                    "example": "Surabaya"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/login": {
+            "post": {
+                "tags": [
+                    "02 - Authentication"
+                ],
+                "summary": "Login User / Admin",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "email": {
+                                    "type": "string",
+                                    "example": "budi@example.com"
+                                },
+                                "password": {
+                                    "type": "string",
+                                    "example": "Password123!"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "tags": [
+                    "02 - Authentication"
+                ],
+                "summary": "Logout (Blacklist Token)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "tags": [
+                    "02 - Authentication"
+                ],
+                "summary": "Melihat data akun saat ini",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/forgot-password": {
+            "post": {
+                "tags": [
+                    "02 - Authentication"
+                ],
+                "summary": "Lupa Password (Kirim Token)",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "email": {
+                                    "type": "string",
+                                    "example": "budi@example.com"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/auth/reset-password": {
+            "post": {
+                "tags": [
+                    "02 - Authentication"
+                ],
+                "summary": "Reset Password Baru",
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "token": {
+                                    "type": "string",
+                                    "example": "eyJhbGciOi..."
+                                },
+                                "new_password": {
+                                    "type": "string",
+                                    "example": "PasswordBaru123!"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/profile": {
+            "get": {
+                "tags": [
+                    "03 - Profile"
+                ],
+                "summary": "Lihat Profil",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "03 - Profile"
+                ],
+                "summary": "Edit Profil",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nama": {
+                                    "type": "string"
+                                },
+                                "no_hp": {
+                                    "type": "string"
+                                },
+                                "alamat": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/profile/photo": {
+            "post": {
+                "tags": [
+                    "03 - Profile"
+                ],
+                "summary": "Upload Foto Profil",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "parameters": [
+                    {
+                        "name": "photo",
+                        "in": "formData",
+                        "required": true,
+                        "type": "file"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/kategori": {
+            "get": {
+                "tags": [
+                    "04 - Kategori"
+                ],
+                "summary": "Lihat Daftar Kategori",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "04 - Kategori"
+                ],
+                "summary": "Tambah Kategori (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nama_kategori": {
+                                    "type": "string",
+                                    "example": "Elektronik"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/kategori/{id}": {
+            "put": {
+                "tags": [
+                    "04 - Kategori"
+                ],
+                "summary": "Edit Kategori (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nama_kategori": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "04 - Kategori"
+                ],
+                "summary": "Hapus Kategori (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang": {
+            "get": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "List Barang (dengan filter)",
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "type": "string"
+                    },
+                    {
+                        "name": "kategori_id",
+                        "in": "query",
+                        "type": "integer"
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "type": "integer",
+                        "default": 1
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "type": "integer",
+                        "default": 10
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Tambah Barang",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nama_barang": {
+                                    "type": "string",
+                                    "example": "Laptop Bekas"
+                                },
+                                "deskripsi": {
+                                    "type": "string"
+                                },
+                                "harga": {
+                                    "type": "number",
+                                    "example": 1500000
+                                },
+                                "kategori_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "kondisi": {
+                                    "type": "string",
+                                    "example": "Bekas - Baik"
+                                },
+                                "lokasi": {
+                                    "type": "string"
+                                },
+                                "tipe_transaksi": {
+                                    "type": "string",
+                                    "example": "jual"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang/{id}": {
+            "get": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Detail Barang",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Edit Barang",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "nama_barang": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Hapus Barang",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang/{id}/photo": {
+            "post": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Upload Foto Barang",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "photo",
+                        "in": "formData",
+                        "required": true,
+                        "type": "file"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/barang/{id}/status": {
+            "patch": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Ubah Status Barang",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status_barang": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/{id}/approve": {
+            "post": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Approve Barang (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/barang/{id}/reject": {
+            "post": {
+                "tags": [
+                    "05 - Barang"
+                ],
+                "summary": "Reject Barang (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi": {
+            "post": {
+                "tags": [
+                    "06 - Transaksi"
+                ],
+                "summary": "Buat Transaksi",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "barang_id": {
+                                    "type": "integer",
+                                    "example": 1
+                                },
+                                "metode_pembayaran": {
+                                    "type": "string",
+                                    "enum": [
+                                        "COD",
+                                        "Transfer"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/{id}": {
+            "get": {
+                "tags": [
+                    "06 - Transaksi"
+                ],
+                "summary": "Detail Transaksi",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/pembeli": {
+            "get": {
+                "tags": [
+                    "06 - Transaksi"
+                ],
+                "summary": "Riwayat Transaksi Pembeli",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/penjual": {
+            "get": {
+                "tags": [
+                    "06 - Transaksi"
+                ],
+                "summary": "Riwayat Transaksi Penjual",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/{id}/bukti-bayar": {
+            "post": {
+                "tags": [
+                    "06 - Transaksi"
+                ],
+                "summary": "Upload Bukti Bayar",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "name": "photo",
+                        "in": "formData",
+                        "required": true,
+                        "type": "file"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/transaksi/{id}/verify": {
+            "post": {
+                "tags": [
+                    "06 - Transaksi"
+                ],
+                "summary": "Verifikasi Bukti Bayar (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string",
+                                    "enum": [
+                                        "terima",
+                                        "tolak"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/transaksi/{id}/status": {
+            "patch": {
+                "tags": [
+                    "06 - Transaksi"
+                ],
+                "summary": "Penyelesaian Transaksi",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string",
+                                    "enum": [
+                                        "selesai",
+                                        "dibatalkan"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi": {
+            "post": {
+                "tags": [
+                    "07 - Donasi"
+                ],
+                "summary": "Donasi Barang (User)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "barang_id": {
+                                    "type": "integer",
+                                    "example": 2
+                                },
+                                "yayasan_id": {
+                                    "type": "integer",
+                                    "example": 3
+                                },
+                                "penerima_id": {
+                                    "type": "integer",
+                                    "example": 4
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Berhasil"
+                    }
+                }
+            },
+            "get": {
+                "tags": [
+                    "07 - Donasi"
+                ],
+                "summary": "Daftar Donasi Tersedia",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi/pengajuan": {
+            "post": {
+                "tags": [
+                    "07 - Donasi"
+                ],
+                "summary": "Pengajuan Penerima Donasi",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "parameters": [
+                    {
+                        "name": "tipe_pemohon",
+                        "in": "formData",
+                        "required": true,
+                        "type": "string",
+                        "enum": [
+                            "perorangan",
+                            "yayasan"
+                        ]
+                    },
+                    {
+                        "name": "nama_penerima",
+                        "in": "formData",
+                        "required": true,
+                        "type": "string",
+                        "example": "Pak Budi"
+                    },
+                    {
+                        "name": "alamat_penerima",
+                        "in": "formData",
+                        "required": true,
+                        "type": "string",
+                        "example": "Jl. Mawar"
+                    },
+                    {
+                        "name": "alasan_kebutuhan",
+                        "in": "formData",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "name": "dokumen_pendukung",
+                        "in": "formData",
+                        "required": false,
+                        "type": "file"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/admin/donasi/{id}/salurkan": {
+            "post": {
+                "tags": [
+                    "07 - Donasi"
+                ],
+                "summary": "Salurkan Donasi (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "pengajuan_id": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/donasi/{id}/status": {
+            "patch": {
+                "tags": [
+                    "07 - Donasi"
+                ],
+                "summary": "Konfirmasi Barang Disalurkan/Diterima (Admin)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "type": "integer"
+                    },
+                    {
+                        "in": "body",
+                        "name": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string",
+                                    "enum": [
+                                        "disalurkan",
+                                        "selesai"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/yayasan": {
+            "get": {
+                "tags": [
+                    "07 - Donasi"
+                ],
+                "summary": "Daftar Yayasan Mitra",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        },
+        "/api/penerima": {
+            "get": {
+                "tags": [
+                    "07 - Donasi"
+                ],
+                "summary": "Daftar Penerima Terverifikasi",
+                "responses": {
+                    "200": {
+                        "description": "Berhasil"
+                    }
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "Format: Bearer <JWT_TOKEN>"
+        }
+    }
+}
