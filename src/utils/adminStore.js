@@ -9,15 +9,24 @@ function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function createCollection(key, prefix) {
+function createCollection(key, prefix, seed = []) {
   const all = () => {
     try {
       const raw = localStorage.getItem(key);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      if (raw !== null) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
-      return [];
+      return seed;
     }
+    if (seed && seed.length > 0) {
+      try {
+        localStorage.setItem(key, JSON.stringify(seed));
+      } catch (e) {}
+      return seed;
+    }
+    return [];
   };
 
   const save = (list) => {
@@ -53,6 +62,84 @@ function createCollection(key, prefix) {
   return { key, all, save, add, update, remove };
 }
 
+export const FOUNDATIONS_SEED = [
+  {
+    id: "YYS-001",
+    name: "Yayasan Kasih Anak",
+    location: "Gubeng, Surabaya",
+    contact: "0812-3456-7890",
+    description: "Membantu pendidikan dan kesejahteraan anak-anak kurang mampu di Surabaya.",
+    needs: "Buku pelajaran, seragam sekolah, mainan edukatif",
+    status: "Aktif",
+    source: "Sistem",
+    createdAt: "2026-11-01T08:00:00.000Z",
+    updatedAt: "2026-11-01T08:00:00.000Z",
+  },
+  {
+    id: "YYS-002",
+    name: "Panti Asuhan Harapan",
+    location: "Wonokromo, Surabaya",
+    contact: "0813-9876-5432",
+    description: "Panti asuhan yang merawat 45 anak yatim dan dhuafa.",
+    needs: "Peralatan dapur, selimut, pakaian layak pakai",
+    status: "Aktif",
+    source: "Sistem",
+    createdAt: "2026-11-02T09:00:00.000Z",
+    updatedAt: "2026-11-02T09:00:00.000Z",
+  },
+  {
+    id: "YYS-003",
+    name: "Rumah Singgah Mandiri",
+    location: "Rungkut, Surabaya",
+    contact: "0811-2233-4455",
+    description: "Pusat rehabilitasi sosial dan pelatihan kemandirian lansia serta difabel.",
+    needs: "Furnitur bekas, elektronik fungsional, bahan bangunan",
+    status: "Aktif",
+    source: "Sistem",
+    createdAt: "2026-11-03T10:00:00.000Z",
+    updatedAt: "2026-11-03T10:00:00.000Z",
+  },
+];
+
+export const RECIPIENT_APPLICATIONS_SEED = [
+  {
+    id: "PNR-001",
+    tipe_penerima: "perorangan",
+    applicantName: "Siti Aminah",
+    nama_lembaga: "",
+    lokasi: "Sukolilo, Surabaya",
+    alasan_kebutuhan: "Buku, meja belajar, dan pakaian anak untuk persiapan sekolah",
+    status: "Disetujui",
+    adminNote: "Verifikasi lapangan disetujui, kondisi layak menerima bantuan.",
+    createdAt: "2026-11-05T08:00:00.000Z",
+    updatedAt: "2026-11-05T09:00:00.000Z",
+  },
+  {
+    id: "PNR-002",
+    tipe_penerima: "perorangan",
+    applicantName: "Pak Hasan",
+    nama_lembaga: "",
+    lokasi: "Rungkut, Surabaya",
+    alasan_kebutuhan: "Peralatan rumah tangga seperti kompor dan perlengkapan masak",
+    status: "Disetujui",
+    adminNote: "Keluarga prasejahtera terverifikasi RT setempat.",
+    createdAt: "2026-11-06T08:00:00.000Z",
+    updatedAt: "2026-11-06T09:00:00.000Z",
+  },
+  {
+    id: "PNR-003",
+    tipe_penerima: "perorangan",
+    applicantName: "Keluarga Ibu Ratna",
+    nama_lembaga: "",
+    lokasi: "Tegalsari, Surabaya",
+    alasan_kebutuhan: "Furnitur dan elektronik layak pakai untuk tempat tinggal sederhana",
+    status: "Disetujui",
+    adminNote: "Disetujui oleh admin kurasi.",
+    createdAt: "2026-11-07T08:00:00.000Z",
+    updatedAt: "2026-11-07T09:00:00.000Z",
+  },
+];
+
 /**
  * Transaksi pembelian.
  * { itemId, itemTitle, itemImage, category, buyerId, buyerName, sellerName,
@@ -72,14 +159,14 @@ export const disputes = createCollection("treadme_disputes", "SKT");
  * Yayasan mitra penerima donasi.
  * { name, location, contact, description, needs, status: "Aktif" | "Nonaktif" }
  */
-export const foundations = createCollection("treadme_foundations", "YYS");
+export const foundations = createCollection("treadme_foundations", "YYS", FOUNDATIONS_SEED);
 
 /**
  * Pengajuan menjadi penerima donasi (dari form AjukanPenerima).
  * { tipe_penerima, nama_lembaga, lokasi, alasan_kebutuhan, dokumen: [nama file],
  *   applicantId, applicantName, status: "Menunggu" | "Disetujui" | "Ditolak", adminNote }
  */
-export const recipientApplications = createCollection("treadme_recipient_applications", "PNR");
+export const recipientApplications = createCollection("treadme_recipient_applications", "PNR", RECIPIENT_APPLICATIONS_SEED);
 
 /**
  * Penawaran lelang dari pengguna.

@@ -8,6 +8,56 @@ function initials(name) {
   return String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
 }
 
+// Data Lokal Yayasan Mitra Bawaan
+const DEFAULT_YAYASAN = [
+  {
+    id: 1,
+    name: 'Yayasan Kasih Anak',
+    needs: 'Buku pelajaran, seragam sekolah, mainan edukatif',
+    location: 'Gubeng, Surabaya',
+    image: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 2,
+    name: 'Panti Asuhan Harapan',
+    needs: 'Peralatan dapur, selimut, pakaian layak pakai',
+    location: 'Wonokromo, Surabaya',
+    image: 'https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 3,
+    name: 'Rumah Singgah Mandiri',
+    needs: 'Furnitur bekas, elektronik fungsional, bahan bangunan',
+    location: 'Rungkut, Surabaya',
+    image: 'https://images.unsplash.com/photo-1531206715517-5c0ba140b2b8?auto=format&fit=crop&w=400&q=80'
+  }
+];
+
+// Data Lokal Penerima Perorangan Bawaan
+const DEFAULT_PERORANGAN = [
+  {
+    id: 4,
+    name: 'Siti Aminah',
+    needs: 'Buku, meja belajar, pakaian anak',
+    location: 'Sukolilo, Surabaya',
+    image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 5,
+    name: 'Pak Hasan',
+    needs: 'Peralatan rumah tangga',
+    location: 'Rungkut, Surabaya',
+    image: 'https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?auto=format&fit=crop&w=400&q=80'
+  },
+  {
+    id: 6,
+    name: 'Keluarga Ibu Ratna',
+    needs: 'Furnitur dan elektronik',
+    location: 'Tegalsari, Surabaya',
+    image: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=400&q=80'
+  }
+];
+
 const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
   // State untuk mengontrol tampilan (List Penerima vs Form Unggah)
   const [showUploadForm, setShowUploadForm] = useState(false);
@@ -30,27 +80,37 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
     };
   }, [refresh]);
 
-  // Yayasan mitra yang aktif (dikelola di Panel Admin → Yayasan)
-  const recipientsYayasan = foundations
-    .all()
-    .filter((y) => y.status === 'Aktif')
-    .map((y) => ({
-      id: y.id,
-      name: y.name,
-      needs: y.needs || y.description || 'Menerima berbagai barang layak pakai',
-      location: y.location,
-    }));
+  // Yayasan mitra yang aktif (gabungan dari data admin store + data lokal)
+  const adminFoundations = foundations
+    ? foundations.all().filter((y) => y.status === 'Aktif').map((y) => ({
+        id: y.id,
+        name: y.name,
+        needs: y.needs || y.description || 'Menerima berbagai barang layak pakai',
+        location: y.location,
+        image: y.image || null,
+      }))
+    : [];
 
-  // Penerima perorangan yang sudah disetujui (Panel Admin → Verifikasi Penerima)
-  const recipientsPerorangan = recipientApplications
-    .all()
-    .filter((a) => a.tipe_penerima === 'perorangan' && a.status === 'Disetujui')
-    .map((a) => ({
-      id: a.id,
-      name: a.applicantName || 'Penerima perorangan',
-      needs: a.alasan_kebutuhan,
-      location: a.lokasi,
-    }));
+  const recipientsYayasan = adminFoundations.length > 0
+    ? [...adminFoundations, ...DEFAULT_YAYASAN.filter((d) => !adminFoundations.some((a) => a.name === d.name))]
+    : DEFAULT_YAYASAN;
+
+  // Penerima perorangan yang sudah disetujui
+  const adminPerorangan = recipientApplications
+    ? recipientApplications.all()
+        .filter((a) => a.tipe_penerima === 'perorangan' && a.status === 'Disetujui')
+        .map((a) => ({
+          id: a.id,
+          name: a.applicantName || 'Penerima perorangan',
+          needs: a.alasan_kebutuhan,
+          location: a.lokasi,
+          image: a.image || null,
+        }))
+    : [];
+
+  const recipientsPerorangan = adminPerorangan.length > 0
+    ? [...adminPerorangan, ...DEFAULT_PERORANGAN.filter((d) => !adminPerorangan.some((a) => a.name === d.name))]
+    : DEFAULT_PERORANGAN;
 
   // Pilih data berdasarkan tab aktif
   const currentRecipients = activeTab === 'yayasan' ? recipientsYayasan : recipientsPerorangan;
@@ -208,11 +268,21 @@ const HalamanDonasi = ({ onBack, onNavigate, currentUser, onLogout }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {currentRecipients.map((recipient) => (
               <div key={recipient.id} className="bg-white rounded-2xl border border-[#EAEFEA] overflow-hidden hover:shadow-xl transition-shadow group flex flex-col">
-                <div className="h-32 bg-gradient-to-br from-[#E8F5E9] to-[#D2E7DA] flex items-center justify-center">
-                  <span className="w-16 h-16 rounded-full bg-white/80 text-[#2F7D5B] text-xl font-extrabold flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
-                    {initials(recipient.name)}
-                  </span>
-                </div>
+                {recipient.image ? (
+                  <div className="h-44 overflow-hidden bg-gray-100">
+                    <img
+                      src={recipient.image}
+                      alt={recipient.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-32 bg-gradient-to-br from-[#E8F5E9] to-[#D2E7DA] flex items-center justify-center">
+                    <span className="w-16 h-16 rounded-full bg-white/80 text-[#2F7D5B] text-xl font-extrabold flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
+                      {initials(recipient.name)}
+                    </span>
+                  </div>
+                )}
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-3">
                     <svg className="w-4 h-4 text-[#2F7D5B]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
